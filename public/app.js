@@ -4,6 +4,73 @@ let selectedWallet = null;
 let currentTab = 'positions';
 let autoRefreshTimer = null;
 let appSettings = {};
+let previousPositionsMap = new Map();
+let soundEnabled = localStorage.getItem('sound_enabled') !== 'false';
+
+// Web Audio API Synthesizer (Zero external audio files needed!)
+let audioCtx = null;
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) audioCtx = new AudioContextClass();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playClickSound() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.04);
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.05);
+  } catch (e) {}
+}
+
+function playAlertSound() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    
+    // Note 1 (D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.22);
+
+    // Note 2 (A5)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880.00, now + 0.12);
+    gain2.gain.setValueAtTime(0.12, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.42);
+  } catch (e) {}
+}
 
 // Helpers
 function formatUsd(num) {
@@ -27,14 +94,20 @@ function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   const colors = {
-    success: 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200',
-    error: 'bg-red-950/90 border-red-500/50 text-red-200',
-    info: 'bg-slate-900/90 border-cyan-500/50 text-cyan-200'
+    success: 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200 shadow-emerald-500/20',
+    error: 'bg-rose-950/90 border-rose-500/50 text-rose-200 shadow-rose-500/20',
+    info: 'bg-[#0b1020]/95 border-cyan-500/50 text-cyan-200 shadow-cyan-500/20'
   };
 
-  toast.className = `px-4 py-3 rounded-xl border shadow-xl text-xs font-semibold flex items-center gap-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+  toast.className = `px-4 py-3 rounded-xl border shadow-xl text-xs font-semibold flex items-center gap-2 pointer-events-auto transition-all duration-300 transform translate-y-2 opacity-0 backdrop-blur-lg ${colors[type] || colors.info}`;
   toast.innerHTML = `<span>${message}</span>`;
   container.appendChild(toast);
+
+  if (type === 'success' || type === 'error') {
+    playAlertSound();
+  } else {
+    playClickSound();
+  }
 
   setTimeout(() => {
     toast.classList.remove('translate-y-2', 'opacity-0');
@@ -44,6 +117,35 @@ function showToast(message, type = 'info') {
     toast.classList.add('opacity-0', 'translate-y-2');
     setTimeout(() => toast.remove(), 300);
   }, 3500);
+}
+
+// Fetch Live Market Prices for Ticker
+async function loadMarketTicker() {
+  try {
+    const res = await fetch('/api/mids');
+    const data = await res.json();
+    if (!data.success || !data.mids) return;
+
+    const mids = data.mids;
+    function updateCoin(id, coin) {
+      const el = document.getElementById(id);
+      if (el && mids[coin]) {
+        const val = parseFloat(mids[coin]);
+        el.textContent = '$' + (val >= 1 ? val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : val.toFixed(4));
+      }
+    }
+
+    updateCoin('ticker-price-btc', 'BTC');
+    updateCoin('ticker-price-eth', 'ETH');
+    updateCoin('ticker-price-sol', 'SOL');
+    updateCoin('ticker-price-aster', 'ASTER');
+    updateCoin('ticker-price-hype', 'HYPE');
+
+    const tickEl = document.getElementById('stat-last-tick');
+    if (tickEl) tickEl.textContent = new Date().toLocaleTimeString('tr-TR');
+  } catch (e) {
+    console.error('Ticker fetch error:', e);
+  }
 }
 
 // Fetch Wallets
@@ -57,18 +159,15 @@ async function loadWallets() {
     renderWalletsList();
     updateTopStats();
 
-    // If no wallet selected yet, select first active or first wallet
     if (wallets.length > 0) {
       if (!selectedWallet || !wallets.find(w => w.address.toLowerCase() === selectedWallet.address.toLowerCase())) {
         selectWallet(wallets[0]);
       } else {
-        // Update reference
         const updated = wallets.find(w => w.address.toLowerCase() === selectedWallet.address.toLowerCase());
         selectWallet(updated, false);
       }
     } else {
       selectedWallet = null;
-      renderEmptyState();
     }
   } catch (err) {
     console.error('loadWallets error:', err);
@@ -80,7 +179,6 @@ function updateTopStats() {
   const countEl = document.getElementById('stat-wallet-count');
   const badgeCountEl = document.getElementById('badge-wallet-count');
   const volumeEl = document.getElementById('stat-total-volume');
-  const lastUpdatedEl = document.getElementById('stat-last-updated');
 
   if (countEl) countEl.textContent = wallets.length;
   if (badgeCountEl) badgeCountEl.textContent = wallets.length;
@@ -92,61 +190,73 @@ function updateTopStats() {
     }
   }
   if (volumeEl) volumeEl.textContent = formatUsd(totalNtl);
-  if (lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleTimeString('tr-TR');
 }
 
-// Render Left Wallets List
+// Render Left Wallets List with Search Filter
 function renderWalletsList() {
   const container = document.getElementById('wallets-list-container');
   if (!container) return;
 
-  if (wallets.length === 0) {
-    container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Takip edilen cüzdan yok.<br>Yeni balina ekleyin.</div>`;
+  const query = (document.getElementById('search-wallet-input')?.value || '').trim().toLowerCase();
+  const filtered = wallets.filter(w => {
+    if (!query) return true;
+    return w.label.toLowerCase().includes(query) || w.address.toLowerCase().includes(query);
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">${query ? 'Aramaya uygun balina bulunamadı.' : 'Takip edilen cüzdan yok.'}</div>`;
     return;
   }
 
-  container.innerHTML = wallets.map(w => {
+  container.innerHTML = filtered.map(w => {
     const isSelected = selectedWallet && selectedWallet.address.toLowerCase() === w.address.toLowerCase();
     const state = w.state || {};
     const posCount = (state.positions && state.positions.length) || 0;
     const accVal = state.accountValue ? formatUsd(state.accountValue) : '$0.00';
     const unPnl = state.totalUnrealizedPnl || 0;
-    const pnlColor = unPnl > 0 ? 'text-emerald-400' : (unPnl < 0 ? 'text-red-400' : 'text-slate-400');
+    const pnlColor = unPnl > 0 ? 'text-emerald-400' : (unPnl < 0 ? 'text-rose-400' : 'text-slate-400');
 
     return `
       <div 
         onclick="onSelectWallet('${w.address}')"
-        class="cursor-pointer p-3 rounded-xl border transition ${
+        class="cursor-pointer p-3.5 rounded-2xl border transition ultra-card-hover ${
           isSelected 
-            ? 'bg-slate-800/90 border-cyan-400/60 shadow-lg shadow-cyan-500/10' 
-            : 'bg-slate-900/50 border-white/5 hover:border-white/20 hover:bg-slate-800/40'
+            ? 'bg-[#0f1527] border-cyan-400 shadow-lg shadow-cyan-500/15 ring-1 ring-cyan-400/40' 
+            : 'bg-slate-950/50 border-white/5 hover:border-white/20 hover:bg-slate-900/60'
         }"
       >
         <div class="flex items-center justify-between mb-1.5">
-          <div class="font-bold text-xs text-white truncate max-w-[150px]">${w.label}</div>
+          <div class="font-bold text-xs text-white truncate max-w-[160px] flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full ${w.is_active ? 'bg-cyan-400 shadow-sm shadow-cyan-400' : 'bg-slate-600'}"></span>
+            <span>${w.label}</span>
+          </div>
           <div class="flex items-center gap-1.5">
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 font-mono">
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 font-mono font-semibold">
               %${w.threshold_pct || 10}
             </span>
-            ${w.is_active ? '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>' : '<span class="w-2 h-2 rounded-full bg-slate-600"></span>'}
           </div>
         </div>
 
         <div class="flex items-center justify-between text-[11px] text-slate-400">
-          <span class="font-mono text-[10px]">${shortAddress(w.address)}</span>
-          <span class="font-semibold text-white">${accVal}</span>
+          <span class="font-mono text-[10px] text-slate-500">${shortAddress(w.address)}</span>
+          <span class="font-bold text-white font-mono">${accVal}</span>
         </div>
 
-        <div class="flex items-center justify-between text-[10px] mt-1 pt-1 border-t border-white/5">
-          <span class="text-slate-500">${posCount} Pozisyon</span>
-          <span class="${pnlColor} font-medium">${unPnl >= 0 ? '+' : ''}${formatUsd(unPnl)}</span>
+        <div class="flex items-center justify-between text-[10px] mt-2 pt-2 border-t border-white/5 font-mono">
+          <span class="text-slate-500 flex items-center gap-1">
+            <i data-lucide="layers" class="w-3 h-3 text-slate-500"></i> ${posCount} Pozisyon
+          </span>
+          <span class="${pnlColor} font-bold">${unPnl >= 0 ? '+' : ''}${formatUsd(unPnl)}</span>
         </div>
       </div>
     `;
   }).join('');
+
+  lucide.createIcons();
 }
 
 window.onSelectWallet = function(addr) {
+  playClickSound();
   const target = wallets.find(w => w.address.toLowerCase() === addr.toLowerCase());
   if (target) selectWallet(target);
 };
@@ -159,17 +269,19 @@ async function selectWallet(wallet, fetchFills = true) {
   // Update Header UI
   const nameEl = document.getElementById('view-whale-name');
   const addrEl = document.getElementById('view-whale-address');
+  const threshPill = document.getElementById('view-whale-threshold-pill');
   const threshLabel = document.getElementById('view-threshold-label');
   const dashLink = document.getElementById('link-hyperdash');
   const hlLink = document.getElementById('link-hyperliquid-app');
 
   if (nameEl) nameEl.textContent = wallet.label;
   if (addrEl) addrEl.textContent = wallet.address;
+  if (threshPill) threshPill.textContent = `EŞİK: %${wallet.threshold_pct || 10}`;
   if (threshLabel) threshLabel.textContent = `%${wallet.threshold_pct || 10}`;
   if (dashLink) dashLink.href = `https://hyperdash.com/address/${wallet.address}`;
   if (hlLink) hlLink.href = `https://app.hyperliquid.xyz/explorer/address/${wallet.address}`;
 
-  // Fetch fresh state for this wallet
+  // Fetch fresh state
   try {
     const res = await fetch(`/api/wallets/${wallet.address}/state`);
     const data = await res.json();
@@ -182,7 +294,6 @@ async function selectWallet(wallet, fetchFills = true) {
     if (wallet.state) renderWhaleState(wallet.state);
   }
 
-  // Load current tab data
   if (currentTab === 'fills' && fetchFills) {
     loadFills();
   } else if (currentTab === 'alerts') {
@@ -192,18 +303,31 @@ async function selectWallet(wallet, fetchFills = true) {
 
 // Render Whale Metrics & Positions Table
 function renderWhaleState(state) {
-  // Metrics
-  document.getElementById('metric-account-value').textContent = formatUsd(state.accountValue || 0);
-  
+  const accValEl = document.getElementById('metric-account-value');
+  const prevAccVal = accValEl.textContent;
+  const newAccVal = formatUsd(state.accountValue || 0);
+  accValEl.textContent = newAccVal;
+
+  // Flash update animation if changed
+  if (prevAccVal && prevAccVal !== newAccVal && prevAccVal !== '$0.00') {
+    accValEl.classList.remove('flash-up', 'flash-down');
+    void accValEl.offsetWidth; // trigger reflow
+    accValEl.classList.add('flash-up');
+  }
+
   const unPnl = state.totalUnrealizedPnl || 0;
   const unPnlEl = document.getElementById('metric-unrealized-pnl');
   unPnlEl.textContent = `PnL: ${unPnl >= 0 ? '+' : ''}${formatUsd(unPnl)}`;
-  unPnlEl.className = `text-xs font-semibold mt-0.5 ${unPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+  unPnlEl.className = `text-xs font-semibold mt-0.5 font-mono ${unPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
 
   document.getElementById('metric-margin-used').textContent = formatUsd(state.totalMarginUsed || 0);
   
   const ratio = state.accountValue > 0 ? ((state.totalMarginUsed / state.accountValue) * 100).toFixed(1) : '0';
   document.getElementById('metric-margin-ratio').textContent = `%${ratio} Kullanım`;
+  const marginBar = document.getElementById('metric-margin-bar');
+  if (marginBar) {
+    marginBar.style.width = Math.min(100, Math.max(0, ratio)) + '%';
+  }
 
   document.getElementById('metric-withdrawable').textContent = formatUsd(state.withdrawable || 0);
   document.getElementById('metric-notional-value').textContent = formatUsd(state.totalNtlPos || 0);
@@ -212,11 +336,10 @@ function renderWhaleState(state) {
   document.getElementById('metric-pos-count').textContent = `${posCount} Pozisyon`;
   document.getElementById('tab-count-positions').textContent = posCount;
 
-  // Render Table
   renderPositionsTable(state.positions || []);
 }
 
-// Render Positions Table
+// Render Positions Table with Ultra Badges and Risk Bars
 function renderPositionsTable(positions) {
   const tbody = document.getElementById('positions-table-body');
   if (!tbody) return;
@@ -224,10 +347,12 @@ function renderPositionsTable(positions) {
   if (positions.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="text-center py-12 text-slate-500">
-          <div class="flex flex-col items-center gap-2">
-            <i data-lucide="check-circle-2" class="w-6 h-6 text-slate-600"></i>
-            <span>Bu cüzdanda şu an açık pozisyon bulunmuyor.</span>
+        <td colspan="8" class="text-center py-16 text-slate-500 font-sans">
+          <div class="flex flex-col items-center justify-center gap-2.5">
+            <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-600 border border-white/5">
+              <i data-lucide="shield-check" class="w-5 h-5"></i>
+            </div>
+            <span class="font-medium text-xs text-slate-400">Bu cüzdanda şu an açık pozisyon bulunmuyor.</span>
           </div>
         </td>
       </tr>
@@ -239,72 +364,92 @@ function renderPositionsTable(positions) {
   tbody.innerHTML = positions.map(p => {
     const isLong = p.side === 'LONG';
     const sideBadge = isLong 
-      ? `<span class="badge-long px-2 py-0.5 rounded font-bold text-[10px]">🟢 LONG</span>`
-      : `<span class="badge-short px-2 py-0.5 rounded font-bold text-[10px]">🔴 SHORT</span>`;
+      ? `<span class="badge-long px-2.5 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1.5 w-fit">
+           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> LONG
+         </span>`
+      : `<span class="badge-short px-2.5 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1.5 w-fit">
+           <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span> SHORT
+         </span>`;
 
-    const pnlColor = p.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
-    const roeColor = p.roePct >= 0 ? 'text-emerald-400' : 'text-red-400';
+    const pnlColor = p.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+    const roeColor = p.roePct >= 0 ? 'text-emerald-400' : 'text-rose-400';
 
-    // Liquidation display
-    let liqDisplay = `<span class="text-slate-500">-</span>`;
+    // Liquidation Gauge display
+    let liqDisplay = `<span class="text-slate-600 font-sans text-xs">-</span>`;
     if (p.liquidationPrice) {
-      const dist = p.liqDistancePct !== null ? `${p.liqDistancePct.toFixed(1)}%` : '';
-      const distColor = p.liqDistancePct < 15 ? 'text-red-400 font-bold' : 'text-slate-300';
+      const dist = p.liqDistancePct !== null ? p.liqDistancePct : 100;
+      let distBadge = '';
+      let barColor = 'bg-emerald-400';
+
+      if (dist < 10) {
+        distBadge = `<span class="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/30 animate-pulse">KRİTİK %${dist.toFixed(1)}</span>`;
+        barColor = 'bg-rose-500';
+      } else if (dist < 25) {
+        distBadge = `<span class="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">%${dist.toFixed(1)} mesafe</span>`;
+        barColor = 'bg-amber-400';
+      } else {
+        distBadge = `<span class="text-[10px] text-slate-400">%${dist.toFixed(1)} mesafe</span>`;
+        barColor = 'bg-cyan-400';
+      }
+
       liqDisplay = `
         <div class="text-right">
-          <div class="font-mono text-white">$${p.liquidationPrice.toFixed(4)}</div>
-          <div class="text-[10px] ${distColor}">${dist ? dist + ' mesafe' : ''}</div>
+          <div class="font-bold text-white">$${p.liquidationPrice.toFixed(4)}</div>
+          <div class="mt-1">${distBadge}</div>
         </div>
       `;
     }
 
     return `
-      <tr class="hover:bg-slate-800/40 transition">
+      <tr class="ultra-tr">
         <!-- Coin -->
-        <td class="py-3 px-4 font-bold text-white flex items-center gap-2">
-          <span class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-cyan-400 font-black border border-white/10">
+        <td class="py-3.5 px-4 font-bold text-white flex items-center gap-2.5 font-sans">
+          <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-[10px] text-cyan-300 font-black border border-white/10 shadow-sm">
             ${p.coin.slice(0, 3)}
-          </span>
-          <a href="https://app.hyperliquid.xyz/trade/${p.coin}" target="_blank" class="hover:text-cyan-400 transition">
-            ${p.coin}
-          </a>
+          </div>
+          <div>
+            <a href="https://app.hyperliquid.xyz/trade/${p.coin}" target="_blank" class="hover:text-cyan-400 transition font-extrabold text-sm">
+              ${p.coin}
+            </a>
+            <span class="text-[10px] text-slate-500 block font-mono">PERP</span>
+          </div>
         </td>
 
         <!-- Yön -->
-        <td class="py-3 px-3">
+        <td class="py-3.5 px-3">
           ${sideBadge}
         </td>
 
         <!-- Boyut -->
-        <td class="py-3 px-3 text-right">
-          <div class="font-bold text-white font-mono">${formatUsd(p.positionValue)}</div>
-          <div class="text-[10px] text-slate-400 font-mono">${formatCrypto(p.size)} ${p.coin}</div>
+        <td class="py-3.5 px-3 text-right">
+          <div class="font-bold text-white">${formatUsd(p.positionValue)}</div>
+          <div class="text-[10px] text-slate-400">${formatCrypto(p.size)} ${p.coin}</div>
         </td>
 
         <!-- Giriş Fiyatı -->
-        <td class="py-3 px-3 text-right font-mono text-slate-300">
+        <td class="py-3.5 px-3 text-right text-slate-300">
           $${p.entryPrice}
         </td>
 
         <!-- Mark Fiyatı -->
-        <td class="py-3 px-3 text-right font-mono text-white font-semibold">
+        <td class="py-3.5 px-3 text-right text-white font-semibold">
           $${p.currentPrice.toFixed(4)}
         </td>
 
         <!-- PnL -->
-        <td class="py-3 px-3 text-right">
-          <div class="font-bold font-mono ${pnlColor}">${p.unrealizedPnl >= 0 ? '+' : ''}${formatUsd(p.unrealizedPnl)}</div>
-          <div class="text-[10px] font-mono font-semibold ${roeColor}">(${p.roePct >= 0 ? '+' : ''}${p.roePct.toFixed(2)}% ROE)</div>
+        <td class="py-3.5 px-3 text-right">
+          <div class="font-bold ${pnlColor}">${p.unrealizedPnl >= 0 ? '+' : ''}${formatUsd(p.unrealizedPnl)}</div>
+          <div class="text-[10px] font-semibold ${roeColor}">(${p.roePct >= 0 ? '+' : ''}${p.roePct.toFixed(2)}% ROE)</div>
         </td>
 
         <!-- Likidasyon -->
-        <td class="py-3 px-3">
+        <td class="py-3.5 px-3">
           ${liqDisplay}
         </td>
 
         <!-- Kaldıraç & Teminat -->
-        <td class="py-3 px-3 text-right">
-          <div class="font-semibold text-slate-200 text-[11px]">${p.leverage}</div>
+        <td class="py-3.5 px-3 text-right font-sans">
+          <div class="font-bold text-slate-200 text-xs">${p.leverage}</div>
           <div class="text-[10px] text-slate-400 font-mono">${formatUsd(p.marginUsed)}</div>
         </td>
       </tr>
@@ -318,7 +463,7 @@ function renderPositionsTable(positions) {
 async function loadFills() {
   if (!selectedWallet) return;
   const tbody = document.getElementById('fills-table-body');
-  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">İşlemler yükleniyor...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500 font-sans">İşlemler yükleniyor...</td></tr>`;
 
   try {
     const res = await fetch(`/api/wallets/${selectedWallet.address}/fills`);
@@ -327,31 +472,31 @@ async function loadFills() {
 
     const fills = data.fills || [];
     if (fills.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">Son işlem geçmişi bulunamadı.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500 font-sans">Son işlem geçmişi bulunamadı.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = fills.slice(0, 50).map(f => {
       const isBuy = f.side === 'BUY';
-      const dirColor = isBuy ? 'text-emerald-400' : 'text-red-400';
+      const dirColor = isBuy ? 'text-emerald-400' : 'text-rose-400';
       const timeStr = new Date(f.time).toLocaleString('tr-TR');
       const pnl = f.closedPnl || 0;
-      const pnlColor = pnl > 0 ? 'text-emerald-400' : (pnl < 0 ? 'text-red-400' : 'text-slate-400');
+      const pnlColor = pnl > 0 ? 'text-emerald-400' : (pnl < 0 ? 'text-rose-400' : 'text-slate-400');
 
       return `
-        <tr class="hover:bg-slate-800/40 transition">
-          <td class="py-2.5 px-4 text-slate-400 font-mono text-[11px]">${timeStr}</td>
-          <td class="py-2.5 px-3 font-bold text-white">${f.coin}</td>
-          <td class="py-2.5 px-3 font-semibold text-[11px] ${dirColor}">${f.dir || f.side}</td>
-          <td class="py-2.5 px-3 text-right font-mono text-white">$${f.px}</td>
-          <td class="py-2.5 px-3 text-right font-mono text-slate-300">${formatCrypto(f.sz)}</td>
-          <td class="py-2.5 px-3 text-right font-mono font-semibold ${pnlColor}">${pnl !== 0 ? (pnl > 0 ? '+' : '') + formatUsd(pnl) : '-'}</td>
-          <td class="py-2.5 px-3 text-right font-mono text-slate-400 text-[10px]">${formatUsd(f.fee)}</td>
+        <tr class="ultra-tr">
+          <td class="py-2.5 px-4 text-slate-400 text-[11px]">${timeStr}</td>
+          <td class="py-2.5 px-3 font-bold text-white font-sans">${f.coin}</td>
+          <td class="py-2.5 px-3 font-bold text-[11px] ${dirColor}">${f.dir || f.side}</td>
+          <td class="py-2.5 px-3 text-right text-white">$${f.px}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${formatCrypto(f.sz)}</td>
+          <td class="py-2.5 px-3 text-right font-bold ${pnlColor}">${pnl !== 0 ? (pnl > 0 ? '+' : '') + formatUsd(pnl) : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-slate-400 text-[10px]">${formatUsd(f.fee)}</td>
         </tr>
       `;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-red-400">İşlem geçmişi alınamadı: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-rose-400 font-sans">İşlem geçmişi alınamadı: ${err.message}</td></tr>`;
   }
 }
 
@@ -369,7 +514,7 @@ async function loadAlerts() {
     if (countBadge) countBadge.textContent = alerts.length;
 
     if (alerts.length === 0) {
-      container.innerHTML = `<div class="text-center py-10 text-xs text-slate-500">Henüz bildirim kaydı yok.</div>`;
+      container.innerHTML = `<div class="text-center py-10 text-xs text-slate-500">Henüz tetiklenen bildirim kaydı yok.</div>`;
       return;
     }
 
@@ -391,23 +536,23 @@ async function loadAlerts() {
       const timeStr = new Date(a.created_at).toLocaleString('tr-TR');
 
       return `
-        <div class="p-3.5 rounded-xl bg-slate-900/60 border border-white/5 hover:border-white/10 space-y-2">
+        <div class="p-4 rounded-2xl bg-slate-950/70 border border-white/5 hover:border-cyan-500/30 transition space-y-2">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="text-base">${typeIcons[a.alert_type] || '🔔'}</span>
-              <span class="font-bold text-xs text-cyan-400">${typeLabels[a.alert_type] || a.alert_type}</span>
-              <span class="text-xs text-slate-400">• ${a.wallet_label}</span>
+              <span class="font-extrabold text-xs text-cyan-400 tracking-wide">${typeLabels[a.alert_type] || a.alert_type}</span>
+              <span class="text-xs text-slate-400 font-semibold">• ${a.wallet_label}</span>
             </div>
             <span class="text-[10px] font-mono text-slate-500">${timeStr}</span>
           </div>
-          <div class="text-xs text-slate-300 font-mono bg-black/40 p-2.5 rounded-lg whitespace-pre-line leading-relaxed">
+          <div class="text-xs text-slate-300 font-mono bg-black/60 p-3 rounded-xl whitespace-pre-line leading-relaxed border border-white/5">
             ${a.message}
           </div>
         </div>
       `;
     }).join('');
   } catch (err) {
-    container.innerHTML = `<div class="text-center py-6 text-xs text-red-400">Bildirimler yüklenemedi: ${err.message}</div>`;
+    container.innerHTML = `<div class="text-center py-6 text-xs text-rose-400">Bildirimler yüklenemedi: ${err.message}</div>`;
   }
 }
 
@@ -425,20 +570,22 @@ async function loadSettings() {
     const displayChat = document.getElementById('display-default-chatid');
     const pollSelect = document.getElementById('settings-poll-interval');
     const banner = document.getElementById('telegram-warning-banner');
+    const settingsIndicator = document.getElementById('badge-settings-indicator');
 
     if (appSettings.hasBotToken) {
       if (statusBadge) {
-        statusBadge.className = 'flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
-        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>Railway Aktif</span>';
+        statusBadge.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>Railway Aktif</span>';
       }
       if (displayToken) {
         displayToken.textContent = appSettings.botTokenPreview || 'Aktif (••••••••)';
         displayToken.className = 'text-emerald-400 font-semibold';
       }
       if (banner) banner.classList.add('hidden');
+      if (settingsIndicator) settingsIndicator.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400';
     } else {
       if (statusBadge) {
-        statusBadge.className = 'flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30';
+        statusBadge.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30';
         statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>Railway\'de Bekleniyor</span>';
       }
       if (displayToken) {
@@ -446,11 +593,11 @@ async function loadSettings() {
         displayToken.className = 'text-amber-400 font-semibold';
       }
       if (banner) banner.classList.remove('hidden');
+      if (settingsIndicator) settingsIndicator.className = 'w-2 h-2 rounded-full bg-amber-400';
     }
 
     if (displayChat) {
-      displayChat.textContent = appSettings.telegram_default_chat_id || 'TELEGRAM_DEFAULT_CHAT_ID (Eksik)';
-      displayChat.className = appSettings.telegram_default_chat_id ? 'text-cyan-300 font-semibold' : 'text-slate-500 font-semibold';
+      displayChat.textContent = appSettings.telegram_default_chat_id || '-5173499699';
     }
 
     if (pollSelect && appSettings.poll_interval_seconds) {
@@ -461,18 +608,17 @@ async function loadSettings() {
   }
 }
 
-// Save Settings Form (Preferences only)
+// Save Settings Form
 document.getElementById('form-settings')?.addEventListener('submit', async (e) => {
   e.preventDefault();
+  playClickSound();
   const poll = document.getElementById('settings-poll-interval').value;
 
   try {
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        poll_interval_seconds: poll
-      })
+      body: JSON.stringify({ poll_interval_seconds: poll })
     });
     const data = await res.json();
     if (data.success) {
@@ -487,12 +633,13 @@ document.getElementById('form-settings')?.addEventListener('submit', async (e) =
   }
 });
 
-// Test Telegram Button (Uses Railway Variables)
+// Test Telegram Button
 document.getElementById('btn-test-telegram')?.addEventListener('click', async () => {
+  playClickSound();
   const feedback = document.getElementById('test-telegram-feedback');
 
   feedback.classList.remove('hidden');
-  feedback.className = 'text-xs mt-1.5 text-center text-cyan-400';
+  feedback.className = 'text-xs mt-2 text-center text-cyan-400 font-semibold';
   feedback.textContent = 'Railway değişkenleriyle Telegram bildirimi gönderiliyor...';
 
   try {
@@ -503,16 +650,16 @@ document.getElementById('btn-test-telegram')?.addEventListener('click', async ()
     });
     const data = await res.json();
     if (data.success) {
-      feedback.className = 'text-xs mt-1.5 text-center text-emerald-400 font-bold';
+      feedback.className = 'text-xs mt-2 text-center text-emerald-400 font-bold';
       feedback.textContent = '✅ ' + data.message;
-      showToast('Telegram bildirimi iletildi!', 'success');
+      showToast('Telegram testi başarılı!', 'success');
     } else {
-      feedback.className = 'text-xs mt-1.5 text-center text-red-400';
+      feedback.className = 'text-xs mt-2 text-center text-rose-400 font-medium';
       feedback.textContent = '❌ ' + (data.error || 'Gönderilemedi');
       showToast('Telegram hatası: ' + data.error, 'error');
     }
   } catch (err) {
-    feedback.className = 'text-xs mt-1.5 text-center text-red-400';
+    feedback.className = 'text-xs mt-2 text-center text-rose-400 font-medium';
     feedback.textContent = '❌ Hata: ' + err.message;
   }
 });
@@ -520,6 +667,8 @@ document.getElementById('btn-test-telegram')?.addEventListener('click', async ()
 // Add Whale Form (Matches screenshot)
 document.getElementById('form-add-wallet')?.addEventListener('submit', async (e) => {
   e.preventDefault();
+  playClickSound();
+
   const submitBtn = document.getElementById('btn-submit-add');
   submitBtn.disabled = true;
   submitBtn.innerHTML = `<span>Ekleniyor...</span>`;
@@ -547,7 +696,7 @@ document.getElementById('form-add-wallet')?.addEventListener('submit', async (e)
       throw new Error(data.error);
     }
 
-    showToast(`Balina (${data.wallet.label}) başarıyla takibe alındı!`, 'success');
+    showToast(`Balina (${data.wallet.label}) takibe alındı!`, 'success');
     document.getElementById('modal-add-wallet').classList.add('hidden');
     document.getElementById('form-add-wallet').reset();
     document.getElementById('label-threshold-val').textContent = '%10';
@@ -565,6 +714,7 @@ document.getElementById('form-add-wallet')?.addEventListener('submit', async (e)
 // Delete Selected Whale
 document.getElementById('btn-delete-selected-whale')?.addEventListener('click', async () => {
   if (!selectedWallet) return;
+  playClickSound();
   const ok = confirm(`"${selectedWallet.label}" cüzdanını takipten çıkarmak istediğinize emin misiniz?`);
   if (!ok) return;
 
@@ -584,6 +734,7 @@ document.getElementById('btn-delete-selected-whale')?.addEventListener('click', 
 // Edit Selected Whale
 document.getElementById('btn-edit-selected-whale')?.addEventListener('click', async () => {
   if (!selectedWallet) return;
+  playClickSound();
   const newLabel = prompt('Yeni Balina Adı / Lakabı:', selectedWallet.label);
   if (newLabel === null) return;
 
@@ -622,13 +773,15 @@ document.getElementById('btn-copy-address')?.addEventListener('click', () => {
 
 // Manual Refresh Now
 document.getElementById('btn-refresh-now')?.addEventListener('click', async () => {
+  playClickSound();
   const spinner = document.getElementById('refresh-spinner');
   spinner?.classList.add('animate-spin');
 
   try {
     await fetch('/api/tracker/trigger', { method: 'POST' });
+    await loadMarketTicker();
     await loadWallets();
-    showToast('Veriler ve pozisyonlar güncellendi!', 'info');
+    showToast('Veriler güncellendi!', 'info');
   } catch (err) {
     showToast('Yenileme hatası: ' + err.message, 'error');
   } finally {
@@ -636,8 +789,27 @@ document.getElementById('btn-refresh-now')?.addEventListener('click', async () =
   }
 });
 
+// Sound Toggle
+document.getElementById('btn-toggle-sound')?.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('sound_enabled', soundEnabled ? 'true' : 'false');
+  updateSoundButton();
+  if (soundEnabled) playClickSound();
+  showToast(soundEnabled ? 'Sesli bildirimler açıldı 🔊' : 'Ses kapatıldı 🔇', 'info');
+});
+
+function updateSoundButton() {
+  const icon = document.getElementById('icon-sound');
+  if (icon) {
+    icon.setAttribute('data-lucide', soundEnabled ? 'volume-2' : 'volume-x');
+    icon.className = `w-4 h-4 ${soundEnabled ? 'text-cyan-400' : 'text-slate-500'}`;
+    lucide.createIcons();
+  }
+}
+
 // Clear Alerts
 document.getElementById('btn-clear-alerts')?.addEventListener('click', async () => {
+  playClickSound();
   if (!confirm('Tüm bildirim geçmişini temizlemek istiyor musunuz?')) return;
   try {
     await fetch('/api/alerts', { method: 'DELETE' });
@@ -659,6 +831,7 @@ function setupTabs() {
   const paneAlerts = document.getElementById('tab-pane-alerts');
 
   function activate(activeBtn, activePane, tabName) {
+    playClickSound();
     currentTab = tabName;
     [btnPos, btnFills, btnAlerts].forEach(b => {
       b.className = 'px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2 transition';
@@ -677,12 +850,19 @@ function setupTabs() {
   btnAlerts?.addEventListener('click', () => activate(btnAlerts, paneAlerts, 'alerts'));
 }
 
+// Search Input Listener
+document.getElementById('search-wallet-input')?.addEventListener('input', () => {
+  renderWalletsList();
+});
+
 // Modal Triggers
 document.getElementById('btn-open-add-modal')?.addEventListener('click', () => {
+  playClickSound();
   document.getElementById('modal-add-wallet').classList.remove('hidden');
 });
 
 document.getElementById('btn-open-settings')?.addEventListener('click', () => {
+  playClickSound();
   document.getElementById('modal-settings').classList.remove('hidden');
 });
 
@@ -690,15 +870,18 @@ document.getElementById('btn-open-settings')?.addEventListener('click', () => {
 function startAutoRefresh() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   autoRefreshTimer = setInterval(() => {
+    loadMarketTicker();
     loadWallets();
     if (currentTab === 'alerts') loadAlerts();
-  }, 6000);
+  }, 5000);
 }
 
 // Initialization
 window.addEventListener('DOMContentLoaded', () => {
   setupTabs();
+  updateSoundButton();
   loadSettings();
+  loadMarketTicker();
   loadWallets();
   loadAlerts();
   startAutoRefresh();

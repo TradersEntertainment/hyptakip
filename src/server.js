@@ -132,6 +132,16 @@ app.get('/api/wallets/:address/fills', async (req, res) => {
   }
 });
 
+// Fetch all market mid prices for ticker
+app.get('/api/mids', async (req, res) => {
+  try {
+    const mids = await hyperliquid.getAllMids();
+    res.json({ success: true, mids });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // --- Alerts Endpoints ---
 
 // Get alerts

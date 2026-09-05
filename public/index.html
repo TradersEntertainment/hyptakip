@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hyperliquid Whale & Position Tracker | Telegram Alerts</title>
+  <title>HYPTAKIP | Hyperliquid Whale & Position Tracker</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -11,67 +11,122 @@
   <!-- Custom Styling -->
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="min-h-screen flex flex-col bg-[#07090e] text-slate-100">
+<body class="min-h-screen flex flex-col bg-[#05070d] text-slate-100 bg-cyber-grid relative selection:bg-cyan-500/30 selection:text-cyan-200">
 
-  <!-- Top Navigation -->
-  <header class="sticky top-0 z-40 bg-[#0d121f]/90 backdrop-blur-md border-b border-white/10 px-4 lg:px-8 py-3.5">
+  <!-- Ambient Aurora Glows -->
+  <div class="ambient-glow ambient-cyan"></div>
+  <div class="ambient-glow ambient-purple"></div>
+  <div class="ambient-glow ambient-blue"></div>
+
+  <!-- Live Market Ticker Bar -->
+  <div class="relative z-30 bg-[#080b16]/90 border-b border-white/5 py-1.5 px-4 overflow-hidden backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 text-[11px]">
+      
+      <div class="flex items-center gap-2 text-cyan-400 font-bold shrink-0">
+        <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+        <span class="tracking-wider uppercase text-[10px]">HYPERLIQUID PIYASA:</span>
+      </div>
+
+      <!-- Ticker Stream -->
+      <div class="flex-1 overflow-x-auto no-scrollbar flex items-center gap-6 font-mono text-xs">
+        <div id="ticker-btc" class="flex items-center gap-1.5 shrink-0">
+          <span class="text-slate-400 font-bold">BTC:</span>
+          <span class="text-white font-semibold" id="ticker-price-btc">$--</span>
+        </div>
+        <div id="ticker-eth" class="flex items-center gap-1.5 shrink-0">
+          <span class="text-slate-400 font-bold">ETH:</span>
+          <span class="text-white font-semibold" id="ticker-price-eth">$--</span>
+        </div>
+        <div id="ticker-sol" class="flex items-center gap-1.5 shrink-0">
+          <span class="text-slate-400 font-bold">SOL:</span>
+          <span class="text-white font-semibold" id="ticker-price-sol">$--</span>
+        </div>
+        <div id="ticker-aster" class="flex items-center gap-1.5 shrink-0">
+          <span class="text-cyan-400 font-bold">ASTER:</span>
+          <span class="text-white font-semibold" id="ticker-price-aster">$--</span>
+        </div>
+        <div id="ticker-hype" class="flex items-center gap-1.5 shrink-0">
+          <span class="text-purple-400 font-bold">HYPE:</span>
+          <span class="text-white font-semibold" id="ticker-price-hype">$--</span>
+        </div>
+      </div>
+
+      <!-- Live Speed / Latency Indicator -->
+      <div class="hidden sm:flex items-center gap-2 text-[10px] text-slate-400 shrink-0">
+        <span class="text-emerald-400 font-bold">● L1 API: ONLINE</span>
+        <span class="text-slate-600">|</span>
+        <span id="stat-last-tick">Az önce</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-[#090d1a]/85 backdrop-blur-xl border-b border-white/10 px-4 lg:px-8 py-3.5">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
       
       <!-- Brand Logo -->
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-          <i data-lucide="activity" class="w-5 h-5 text-black stroke-[2.5]"></i>
+      <div class="flex items-center gap-3.5 cursor-pointer" onclick="location.reload()">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 ring-1 ring-white/20">
+          <i data-lucide="zap" class="w-5 h-5 text-black stroke-[2.5]"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <span class="font-extrabold text-lg tracking-tight text-white">HYP<span class="text-cyan-400">TAKIP</span></span>
-            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              <span class="live-pulse"></span> CANLI
+            <span class="font-black text-xl tracking-tight text-white">HYP<span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">TAKIP</span></span>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 tracking-wide">
+              <span class="live-pulse"></span> CANLI TAKİP
             </span>
           </div>
-          <p class="text-[11px] text-slate-400 font-medium">Hyperliquid L1 Balina & Pozisyon Takipçisi</p>
+          <p class="text-[11px] text-slate-400 font-medium tracking-tight">Hyperliquid Balina & Pozisyon Radar</p>
         </div>
       </div>
 
-      <!-- Quick Status Indicators -->
-      <div class="hidden md:flex items-center gap-6 text-xs text-slate-300">
-        <div class="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-white/5">
-          <i data-lucide="users" class="w-4 h-4 text-cyan-400"></i>
-          <span>İzlenen: <b id="stat-wallet-count" class="text-white">1</b> Balina</span>
+      <!-- Top Quick KPIs -->
+      <div class="hidden xl:flex items-center gap-5 text-xs">
+        <div class="flex items-center gap-2.5 bg-slate-900/70 px-3.5 py-1.5 rounded-xl border border-white/5">
+          <i data-lucide="crosshair" class="w-4 h-4 text-cyan-400"></i>
+          <span>İzlenen: <b id="stat-wallet-count" class="text-white font-mono font-bold">1</b> Balina</span>
         </div>
-        <div class="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-white/5">
-          <i data-lucide="dollar-sign" class="w-4 h-4 text-emerald-400"></i>
-          <span>Toplam Hacim: <b id="stat-total-volume" class="text-emerald-400">$0</b></span>
-        </div>
-        <div class="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-white/5">
-          <i data-lucide="clock" class="w-4 h-4 text-purple-400"></i>
-          <span>Son Kontrol: <b id="stat-last-updated" class="text-slate-200">Az önce</b></span>
+        <div class="flex items-center gap-2.5 bg-slate-900/70 px-3.5 py-1.5 rounded-xl border border-white/5">
+          <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+          <span>Toplam Hacim: <b id="stat-total-volume" class="text-emerald-400 font-mono font-bold">$0.00</b></span>
         </div>
       </div>
 
-      <!-- Actions -->
-      <div class="flex items-center gap-2.5">
-        <button id="btn-refresh-now" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-white/10 transition">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-spinner"></i>
-          <span>Yenile</span>
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        
+        <!-- Sound FX Toggle -->
+        <button id="btn-toggle-sound" title="Sesli Bildirimleri Aç/Kapat" class="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-white/10 transition flex items-center gap-1.5 text-xs">
+          <i data-lucide="volume-2" id="icon-sound" class="w-4 h-4 text-cyan-400"></i>
         </button>
 
-        <button id="btn-open-settings" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-white/10 transition">
-          <i data-lucide="settings" class="w-3.5 h-3.5 text-slate-300"></i>
+        <!-- Refresh Button -->
+        <button id="btn-refresh-now" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-xs font-semibold text-slate-200 border border-white/10 hover:border-white/20 transition">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-slate-300" id="refresh-spinner"></i>
+          <span class="hidden sm:inline">Yenile</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button id="btn-open-settings" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-xs font-semibold text-slate-200 border border-white/10 hover:border-white/20 transition">
+          <i data-lucide="settings" class="w-3.5 h-3.5 text-purple-400"></i>
           <span>Ayarlar</span>
+          <span id="badge-settings-indicator" class="w-2 h-2 rounded-full bg-emerald-400"></span>
         </button>
 
-        <button id="btn-open-add-modal" class="btn-cyan flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition">
+        <!-- Add Whale Button (Cyan Neon) -->
+        <button id="btn-open-add-modal" class="btn-ultra-cyan flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer">
           <i data-lucide="plus-circle" class="w-4 h-4 stroke-[2.5]"></i>
           <span>Yeni Balina Ekle</span>
         </button>
+
       </div>
 
     </div>
   </header>
 
   <!-- Telegram Warning Banner (If not configured in Railway) -->
-  <div id="telegram-warning-banner" class="hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-200">
+  <div id="telegram-warning-banner" class="hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-200 relative z-30">
     <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
       <div class="flex items-center gap-2">
         <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
@@ -84,84 +139,111 @@
   </div>
 
   <!-- Main Content Layout -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
     
-    <!-- LEFT SIDEBAR: Tracked Wallets List (4 cols) -->
+    <!-- LEFT SIDEBAR: Tracked Whales (4 cols) -->
     <aside class="lg:col-span-4 space-y-4">
       
-      <!-- Card: Wallets Header -->
-      <div class="glass-panel rounded-2xl p-4">
+      <!-- Whales Card Container -->
+      <div class="ultra-glass rounded-2xl p-4">
+        
+        <!-- Header & Search -->
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
-            <i data-lucide="shield-check" class="w-4 h-4 text-cyan-400"></i>
-            <h2 class="font-bold text-sm tracking-wide text-white">Takip Edilen Cüzdanlar</h2>
+            <i data-lucide="crosshair" class="w-4 h-4 text-cyan-400"></i>
+            <h2 class="font-bold text-sm tracking-wide text-white">Takip Edilen Balinalar</h2>
           </div>
-          <span id="badge-wallet-count" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">0</span>
+          <span id="badge-wallet-count" class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">0</span>
+        </div>
+
+        <!-- Search Input -->
+        <div class="relative mb-3">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3"></i>
+          <input 
+            type="text" 
+            id="search-wallet-input" 
+            placeholder="Balina adı veya adres ara..." 
+            class="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-950/60 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition"
+          >
         </div>
 
         <!-- Wallets List -->
-        <div id="wallets-list-container" class="space-y-2.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+        <div id="wallets-list-container" class="space-y-2.5 max-h-[calc(100vh-340px)] overflow-y-auto pr-1">
           <!-- Populated by app.js -->
           <div class="text-center py-8 text-xs text-slate-500">Cüzdanlar yükleniyor...</div>
         </div>
 
-        <!-- Quick Add Whale Button in sidebar -->
-        <button onclick="document.getElementById('btn-open-add-modal').click()" class="mt-3 w-full py-2.5 px-3 rounded-xl border border-dashed border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10 text-cyan-400 text-xs font-semibold flex items-center justify-center gap-2 transition">
+        <!-- Add Button in Sidebar -->
+        <button onclick="document.getElementById('btn-open-add-modal').click()" class="mt-3 w-full py-2.5 px-3 rounded-xl border border-dashed border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/5 hover:bg-cyan-500/10 text-cyan-400 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer">
           <i data-lucide="plus" class="w-4 h-4"></i>
           <span>Yeni Balina / Cüzdan Ekle</span>
         </button>
+
       </div>
 
-      <!-- Quick Tips / Info Box -->
+      <!-- Quick Tips Box matching user's screenshot -->
       <div class="info-box-screenshot text-xs space-y-1.5">
-        <div class="flex items-center gap-1.5 font-bold text-purple-400">
-          <i data-lucide="zap" class="w-4 h-4"></i>
-          <span>Canlı Takip Sistemi</span>
+        <div class="flex items-center gap-2 font-bold text-purple-400">
+          <i data-lucide="radio" class="w-4 h-4 animate-pulse"></i>
+          <span>7/24 Gerçek Zamanlı Takip</span>
         </div>
         <p class="text-slate-300 leading-relaxed text-[12px]">
-          Eklenen cüzdanların Hyperliquid L1 üzerindeki yeni pozisyon açılışları ve %10'dan fazla pozisyon boyutu değişimleri saniyeler içinde tespit edilip Telegram'a aktarılır.
+          Eklediğiniz cüzdanların Hyperliquid L1 üzerindeki yeni pozisyonları ve <b class="text-cyan-300">%10+ boyut değişimleri</b> anında tespit edilip Telegram'a iletilir.
         </p>
       </div>
 
     </aside>
 
-    <!-- CENTER / MAIN CONTENT (8 cols) -->
-    <section class="lg:col-span-8 space-y-6">
+    <!-- CENTER / MAIN VIEW (8 cols) -->
+    <section class="lg:col-span-8 space-y-5">
 
-      <!-- Active Selected Whale Header Card -->
-      <div id="selected-whale-header" class="glass-panel rounded-2xl p-5 relative overflow-hidden">
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 id="view-whale-name" class="text-xl font-extrabold text-white">Yükleniyor...</h1>
-              <span id="view-whale-status" class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">AKTİF</span>
-            </div>
+      <!-- Active Whale Hero Header Card -->
+      <div id="selected-whale-header" class="ultra-glass rounded-2xl p-5 relative overflow-hidden">
+        
+        <!-- Background subtle glow -->
+        <div class="absolute top-0 right-0 w-64 h-32 bg-cyan-500/10 rounded-full filter blur-3xl pointer-events-none"></div>
+
+        <div class="flex flex-wrap items-start justify-between gap-4 relative z-10">
+          <div class="flex items-start gap-3.5">
             
-            <!-- Address and Links -->
-            <div class="flex flex-wrap items-center gap-2 mt-2 text-xs">
-              <span class="text-slate-400">Adres:</span>
-              <code id="view-whale-address" class="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 font-mono select-all">0x...</code>
-              <button id="btn-copy-address" title="Adresi Kopyala" class="p-1 hover:text-cyan-400 text-slate-400 transition">
-                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-              </button>
-              <a id="link-hyperdash" href="#" target="_blank" class="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 ml-2 font-medium">
-                <span>Hyperdash</span>
-                <i data-lucide="external-link" class="w-3 h-3"></i>
-              </a>
-              <a id="link-hyperliquid-app" href="#" target="_blank" class="flex items-center gap-1 text-slate-400 hover:text-slate-200 ml-1 font-medium">
-                <span>HL Explorer</span>
-                <i data-lucide="external-link" class="w-3 h-3"></i>
-              </a>
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shrink-0">
+              <i data-lucide="user-check" class="w-6 h-6 text-cyan-400"></i>
             </div>
+
+            <div>
+              <div class="flex items-center gap-2">
+                <h1 id="view-whale-name" class="text-xl font-black text-white tracking-tight">Yükleniyor...</h1>
+                <span id="view-whale-status" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">AKTİF</span>
+                <span id="view-whale-threshold-pill" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30">EŞİK: %10</span>
+              </div>
+              
+              <!-- Address and Quick External Links -->
+              <div class="flex flex-wrap items-center gap-2 mt-2 text-xs">
+                <span class="text-slate-500 font-medium">Adres:</span>
+                <code id="view-whale-address" class="px-2 py-0.5 rounded-lg bg-slate-900/90 text-cyan-300 font-mono text-[11px] border border-white/5 select-all">0x...</code>
+                <button id="btn-copy-address" title="Adresi Kopyala" class="p-1 hover:text-cyan-400 text-slate-400 transition">
+                  <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                </button>
+                <a id="link-hyperdash" href="#" target="_blank" class="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 ml-1 font-semibold hover:underline">
+                  <span>Hyperdash</span>
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+                <a id="link-hyperliquid-app" href="#" target="_blank" class="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 ml-1 font-semibold hover:underline">
+                  <span>HL Explorer</span>
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+              </div>
+            </div>
+
           </div>
 
-          <!-- Actions for this wallet -->
+          <!-- Actions -->
           <div class="flex items-center gap-2">
-            <button id="btn-edit-selected-whale" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-white/10 flex items-center gap-1.5 transition">
-              <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            <button id="btn-edit-selected-whale" class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-200 border border-white/10 flex items-center gap-1.5 transition">
+              <i data-lucide="edit-2" class="w-3.5 h-3.5 text-cyan-400"></i>
               <span>Düzenle</span>
             </button>
-            <button id="btn-delete-selected-whale" class="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-xs text-red-400 border border-red-500/30 flex items-center gap-1.5 transition">
+            <button id="btn-delete-selected-whale" class="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 border border-rose-500/30 flex items-center gap-1.5 transition">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               <span>Sil</span>
             </button>
@@ -169,30 +251,39 @@
         </div>
 
         <!-- Metric Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          <div class="bg-slate-900/60 p-3.5 rounded-xl border border-white/5">
-            <div class="text-[11px] font-semibold text-slate-400 mb-1">Toplam Hesap Değeri</div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 relative z-10">
+          
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
+            <div class="text-[11px] font-bold text-slate-400 mb-1">Toplam Portföy (Kasa)</div>
             <div id="metric-account-value" class="text-lg font-black text-white font-mono">$0.00</div>
-            <div id="metric-unrealized-pnl" class="text-xs font-semibold mt-0.5 text-slate-400">PnL: $0.00</div>
+            <div id="metric-unrealized-pnl" class="text-xs font-semibold mt-0.5 text-slate-400 font-mono">PnL: $0.00</div>
           </div>
 
-          <div class="bg-slate-900/60 p-3.5 rounded-xl border border-white/5">
-            <div class="text-[11px] font-semibold text-slate-400 mb-1">Kullanılan Teminat</div>
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
+            <div class="text-[11px] font-bold text-slate-400 mb-1">Kullanılan Teminat</div>
             <div id="metric-margin-used" class="text-lg font-black text-white font-mono">$0.00</div>
-            <div id="metric-margin-ratio" class="text-xs text-slate-400 mt-0.5">%0 Kullanım</div>
+            <div class="mt-1.5">
+              <div class="liq-meter-track">
+                <div id="metric-margin-bar" class="liq-meter-fill bg-gradient-to-r from-cyan-400 to-blue-500" style="width: 0%"></div>
+              </div>
+              <div id="metric-margin-ratio" class="text-[10px] text-slate-400 mt-1 font-mono">%0 Kullanım</div>
+            </div>
           </div>
 
-          <div class="bg-slate-900/60 p-3.5 rounded-xl border border-white/5">
-            <div class="text-[11px] font-semibold text-slate-400 mb-1">Çekilebilir Bakiye</div>
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
+            <div class="text-[11px] font-bold text-slate-400 mb-1">Çekilebilir Bakiye</div>
             <div id="metric-withdrawable" class="text-lg font-black text-white font-mono">$0.00</div>
-            <div class="text-xs text-emerald-400 mt-0.5">Serbest Nakit</div>
+            <div class="text-[10px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
+              <i data-lucide="check" class="w-3 h-3"></i> Serbest Nakit
+            </div>
           </div>
 
-          <div class="bg-slate-900/60 p-3.5 rounded-xl border border-white/5">
-            <div class="text-[11px] font-semibold text-slate-400 mb-1">Toplam Açık Pozisyon</div>
+          <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
+            <div class="text-[11px] font-bold text-slate-400 mb-1">Toplam Açık Pozisyon</div>
             <div id="metric-notional-value" class="text-lg font-black text-cyan-300 font-mono">$0.00</div>
-            <div id="metric-pos-count" class="text-xs text-cyan-400 mt-0.5">0 Pozisyon</div>
+            <div id="metric-pos-count" class="text-xs text-cyan-400 mt-0.5 font-semibold">0 Pozisyon</div>
           </div>
+
         </div>
 
       </div>
@@ -200,36 +291,38 @@
       <!-- Navigation Tabs -->
       <div class="flex items-center justify-between border-b border-white/10 pb-2">
         <div class="flex items-center gap-2">
+          
           <button id="tab-btn-positions" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center gap-2 transition">
-            <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+            <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
             <span>Aktif Pozisyonlar</span>
-            <span id="tab-count-positions" class="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px]">0</span>
+            <span id="tab-count-positions" class="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-mono">0</span>
           </button>
           
           <button id="tab-btn-fills" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2 transition">
-            <i data-lucide="list-ordered" class="w-4 h-4"></i>
+            <i data-lucide="history" class="w-4 h-4"></i>
             <span>Son İşlemler (Fills)</span>
           </button>
 
           <button id="tab-btn-alerts" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2 transition">
             <i data-lucide="bell" class="w-4 h-4"></i>
             <span>Bildirim Geçmişi</span>
-            <span id="tab-count-alerts" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px]">0</span>
+            <span id="tab-count-alerts" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono">0</span>
           </button>
+
         </div>
 
         <div class="text-xs text-slate-400 flex items-center gap-1.5">
-          <i data-lucide="shield" class="w-3.5 h-3.5 text-purple-400"></i>
-          <span>Eşik: <b id="view-threshold-label" class="text-white">%10</b></span>
+          <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-purple-400"></i>
+          <span>Uyarı Eşiği: <b id="view-threshold-label" class="text-white font-mono">%10</b></span>
         </div>
       </div>
 
       <!-- TAB 1: POSITIONS TABLE -->
       <div id="tab-pane-positions" class="space-y-4">
-        <div class="glass-panel rounded-2xl overflow-hidden">
+        <div class="ultra-glass rounded-2xl overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/5">
+              <thead class="bg-slate-950/80 text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-white/5">
                 <tr>
                   <th class="py-3 px-4">Parite</th>
                   <th class="py-3 px-3">Yön</th>
@@ -237,14 +330,14 @@
                   <th class="py-3 px-3 text-right">Giriş Fiyatı</th>
                   <th class="py-3 px-3 text-right">Mark Fiyatı</th>
                   <th class="py-3 px-3 text-right">Kâr / Zarar (PnL)</th>
-                  <th class="py-3 px-3 text-right">Likidasyon</th>
-                  <th class="py-3 px-3 text-right">Kaldıraç</th>
+                  <th class="py-3 px-3 text-right">Likidasyon Mesafesi</th>
+                  <th class="py-3 px-3 text-right">Kaldıraç / Teminat</th>
                 </tr>
               </thead>
-              <tbody id="positions-table-body" class="divide-y divide-white/5">
+              <tbody id="positions-table-body" class="divide-y divide-white/5 font-mono">
                 <!-- Populated by app.js -->
                 <tr>
-                  <td colspan="8" class="text-center py-12 text-slate-500">Pozisyon verisi yükleniyor...</td>
+                  <td colspan="8" class="text-center py-12 text-slate-500 font-sans">Pozisyon verisi yükleniyor...</td>
                 </tr>
               </tbody>
             </table>
@@ -254,10 +347,10 @@
 
       <!-- TAB 2: TRADE FILLS TABLE -->
       <div id="tab-pane-fills" class="space-y-4 hidden">
-        <div class="glass-panel rounded-2xl overflow-hidden">
+        <div class="ultra-glass rounded-2xl overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-900/80 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/5">
+              <thead class="bg-slate-950/80 text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-white/5">
                 <tr>
                   <th class="py-3 px-4">Zaman</th>
                   <th class="py-3 px-3">Coin</th>
@@ -268,10 +361,10 @@
                   <th class="py-3 px-3 text-right">İşlem Ücreti</th>
                 </tr>
               </thead>
-              <tbody id="fills-table-body" class="divide-y divide-white/5">
+              <tbody id="fills-table-body" class="divide-y divide-white/5 font-mono">
                 <!-- Populated by app.js -->
                 <tr>
-                  <td colspan="7" class="text-center py-12 text-slate-500">İşlem geçmişi yükleniyor...</td>
+                  <td colspan="7" class="text-center py-12 text-slate-500 font-sans">İşlem geçmişi yükleniyor...</td>
                 </tr>
               </tbody>
             </table>
@@ -281,10 +374,13 @@
 
       <!-- TAB 3: ALERTS LOG -->
       <div id="tab-pane-alerts" class="space-y-4 hidden">
-        <div class="glass-panel rounded-2xl p-4">
+        <div class="ultra-glass rounded-2xl p-4">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-bold text-sm text-white">Tetiklenen Son Bildirimler</h3>
-            <button id="btn-clear-alerts" class="text-xs text-red-400 hover:text-red-300 font-semibold transition">
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i data-lucide="bell" class="w-4 h-4 text-cyan-400"></i>
+              <span>Tetiklenen Canlı Bildirimler</span>
+            </h3>
+            <button id="btn-clear-alerts" class="text-xs text-rose-400 hover:text-rose-300 font-semibold transition">
               Geçmişi Temizle
             </button>
           </div>
@@ -301,9 +397,9 @@
 
   <!-- ================= MODALS ================= -->
 
-  <!-- MODAL: YENİ BALİNA EKLE (Matches the user's uploaded image exactly) -->
-  <div id="modal-add-wallet" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
-    <div class="w-full max-w-sm bg-[#0b0f19] border border-white/10 rounded-2xl p-6 shadow-2xl relative animate-fade-in space-y-5">
+  <!-- MODAL: YENİ BALİNA EKLE (Matches the user's screenshot with ultra styling) -->
+  <div id="modal-add-wallet" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden">
+    <div class="w-full max-w-sm bg-[#0a0e1a] border border-cyan-500/20 rounded-2xl p-6 shadow-2xl relative modal-animate-in space-y-5">
       
       <!-- Close Button -->
       <button onclick="document.getElementById('modal-add-wallet').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
@@ -311,7 +407,7 @@
       </button>
 
       <!-- Modal Title matching screenshot -->
-      <h2 class="text-xl font-bold glow-cyan-text text-left">Yeni Balina Ekle</h2>
+      <h2 class="text-xl font-bold glow-cyan-text text-left tracking-tight">Yeni Balina Ekle</h2>
 
       <!-- Form -->
       <form id="form-add-wallet" class="space-y-4">
@@ -323,7 +419,7 @@
             type="text" 
             id="input-add-label" 
             placeholder="Örn: 150dollarsto10k" 
-            class="w-full px-3.5 py-3 rounded-xl bg-[#07090e] border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-400 transition"
+            class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-400 transition"
           >
         </div>
 
@@ -335,7 +431,7 @@
             id="input-add-address" 
             required 
             placeholder="Örn: 0x4fbc41fac6d1cacf1" 
-            class="w-full px-3.5 py-3 rounded-xl bg-[#07090e] border border-white/10 text-white placeholder-slate-600 text-sm font-mono focus:outline-none focus:border-cyan-400 transition"
+            class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm font-mono focus:outline-none focus:border-cyan-400 transition"
           >
         </div>
 
@@ -345,16 +441,17 @@
           <input 
             type="text" 
             id="input-add-chatid" 
-            placeholder="Örn: -1001234567890" 
-            class="w-full px-3.5 py-3 rounded-xl bg-[#07090e] border border-white/10 text-white placeholder-slate-600 text-sm font-mono focus:outline-none focus:border-cyan-400 transition"
+            placeholder="Örn: -5173499699" 
+            class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm font-mono focus:outline-none focus:border-cyan-400 transition"
           >
+          <p class="text-[10px] text-slate-500">Boş bırakılırsa Railway'deki genel Chat ID kullanılır.</p>
         </div>
 
         <!-- Bildirim Hassasiyeti (% Değişim) -->
         <div class="space-y-1.5">
           <div class="flex justify-between items-center text-xs font-semibold text-slate-300">
             <span>Pozisyon Değişim Eşiği (%)</span>
-            <span id="label-threshold-val" class="text-cyan-400 font-bold">%10</span>
+            <span id="label-threshold-val" class="text-cyan-400 font-bold font-mono">%10</span>
           </div>
           <input 
             type="range" 
@@ -366,14 +463,14 @@
             class="w-full accent-cyan-400 bg-slate-800 h-2 rounded-lg cursor-pointer"
             oninput="document.getElementById('label-threshold-val').textContent = '%' + this.value"
           >
-          <p class="text-[10px] text-slate-500">Pozisyon büyüklüğü en az bu oranda değiştiğinde bildirim gönderilir.</p>
+          <p class="text-[10px] text-slate-500">Pozisyon boyutu en az bu oranda değiştiğinde bildirim gönderilir.</p>
         </div>
 
         <!-- Submit Button matching screenshot -->
         <button 
           type="submit" 
           id="btn-submit-add"
-          class="w-full py-3.5 rounded-xl btn-cyan text-sm font-black flex items-center justify-center gap-2 transition cursor-pointer"
+          class="w-full py-3.5 rounded-xl btn-ultra-cyan text-sm font-black flex items-center justify-center gap-2 transition cursor-pointer"
         >
           <span>Takibe Başla</span>
         </button>
@@ -381,7 +478,7 @@
         <!-- Info Box matching screenshot -->
         <div class="info-box-screenshot text-xs text-slate-300 space-y-1">
           <p class="leading-relaxed">
-            <b class="text-white">Bilgi:</b> Eylediğiniz cüzdanın Hyperliquid üzerindeki yeni pozisyonları ve %10+ boyut değişimleri tespit edildiğinde bağlı Telegram grubuna/sohbetine anında bildirim gönderilecektir.
+            <b class="text-white">Bilgi:</b> Eylediğiniz cüzdanın Hyperliquid üzerindeki yeni pozisyonları ve %10+ boyut değişimleri tespit edildiğinde bağlı Telegram grubuna anında bildirim gönderilecektir.
           </p>
         </div>
 
@@ -390,8 +487,8 @@
   </div>
 
   <!-- MODAL: AYARLAR (TELEGRAM & SİSTEM) -->
-  <div id="modal-settings" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
-    <div class="w-full max-w-md bg-[#0b0f19] border border-white/10 rounded-2xl p-6 shadow-2xl relative animate-fade-in space-y-5">
+  <div id="modal-settings" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden">
+    <div class="w-full max-w-md bg-[#0a0e1a] border border-cyan-500/20 rounded-2xl p-6 shadow-2xl relative modal-animate-in space-y-5">
       
       <!-- Close Button -->
       <button onclick="document.getElementById('modal-settings').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
@@ -399,60 +496,60 @@
       </button>
 
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-          <i data-lucide="settings" class="w-4 h-4"></i>
+        <div class="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+          <i data-lucide="settings" class="w-5 h-5"></i>
         </div>
         <div>
-          <h2 class="text-lg font-bold text-white">Telegram & Sistem Ayarları</h2>
-          <p class="text-xs text-slate-400">Bot token ve bildirim kanallarını yönetin</p>
+          <h2 class="text-lg font-bold text-white tracking-tight">Telegram & Sistem Ayarları</h2>
+          <p class="text-xs text-slate-400">Railway ortam değişkenleri ve bot durumu</p>
         </div>
       </div>
 
       <form id="form-settings" class="space-y-4">
         
-        <!-- Railway Environment Variable: Bot Token Status Card -->
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/10 space-y-2">
+        <!-- Railway Variable: Bot Token Status -->
+        <div class="p-3.5 rounded-xl bg-slate-950/80 border border-white/10 space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-slate-300">Telegram Bot Token</span>
-            <div id="status-bot-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            <div id="status-bot-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
               <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
               <span>Railway'de Bekleniyor</span>
             </div>
           </div>
 
-          <div class="flex items-center justify-between bg-black/50 px-3 py-2 rounded-lg border border-white/5 text-xs font-mono">
+          <div class="flex items-center justify-between bg-black/60 px-3 py-2 rounded-lg border border-white/5 text-xs font-mono">
             <span class="text-slate-500">Değişken:</span>
             <span id="display-bot-token" class="text-cyan-300 font-semibold">TELEGRAM_BOT_TOKEN</span>
           </div>
 
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            <span class="text-cyan-400 font-semibold">⚡ Railway'den Yönetilir:</span> Bot token web sitesinden değil, Railway dashboard'undaki <b>Variables</b> sekmesine <code>TELEGRAM_BOT_TOKEN</code> olarak eklenir.
+            <span class="text-cyan-400 font-semibold">⚡ Railway Variables:</span> Bot token web sitesinden değil, Railway dashboard'undaki <b>Variables</b> sekmesine <code>TELEGRAM_BOT_TOKEN</code> olarak eklenir.
           </p>
         </div>
 
-        <!-- Railway Environment Variable: Default Chat ID Status Card -->
-        <div class="p-3.5 rounded-xl bg-slate-900/80 border border-white/10 space-y-2">
+        <!-- Railway Variable: Default Chat ID Status -->
+        <div class="p-3.5 rounded-xl bg-slate-950/80 border border-white/10 space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-slate-300">Varsayılan Telegram Chat ID</span>
-            <div id="status-chat-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400 border border-white/10">
-              <span>Railway Variables</span>
+            <div id="status-chat-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30 font-mono">
+              <span>-5173499699</span>
             </div>
           </div>
 
-          <div class="flex items-center justify-between bg-black/50 px-3 py-2 rounded-lg border border-white/5 text-xs font-mono">
+          <div class="flex items-center justify-between bg-black/60 px-3 py-2 rounded-lg border border-white/5 text-xs font-mono">
             <span class="text-slate-500">Değişken:</span>
-            <span id="display-default-chatid" class="text-slate-300 font-semibold">TELEGRAM_DEFAULT_CHAT_ID</span>
+            <span id="display-default-chatid" class="text-slate-300 font-semibold font-mono">-5173499699</span>
           </div>
 
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            Varsayılan bildirim kanalı Railway'de <code>TELEGRAM_DEFAULT_CHAT_ID</code> olarak tanımlanır.
+            Ana balina ve diğer cüzdanlar için varsayılan bildirim grubu.
           </p>
         </div>
 
         <!-- Polling Interval -->
-        <div class="space-y-1">
+        <div class="space-y-1.5">
           <label class="block text-xs font-semibold text-slate-300">Tarama Aralığı (Saniye)</label>
-          <select id="settings-poll-interval" class="w-full px-3.5 py-2.5 rounded-xl bg-[#07090e] border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-400">
+          <select id="settings-poll-interval" class="w-full px-3.5 py-2.5 rounded-xl bg-[#06080e] border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-400">
             <option value="3">3 Saniyede bir (Ultra Hızlı)</option>
             <option value="5" selected>5 Saniyede bir (Önerilen)</option>
             <option value="10">10 Saniyede bir</option>
@@ -465,7 +562,7 @@
           <button 
             type="button" 
             id="btn-test-telegram" 
-            class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-cyan-400 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+            class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-400 hover:text-cyan-300 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
           >
             <i data-lucide="send" class="w-3.5 h-3.5"></i>
             <span>Railway Telegram Bağlantısını Test Et</span>
@@ -473,10 +570,10 @@
           <div id="test-telegram-feedback" class="text-xs mt-1.5 text-center hidden"></div>
         </div>
 
-        <!-- Save Button -->
+        <!-- Save Preferences Button -->
         <button 
           type="submit" 
-          class="w-full py-3 rounded-xl btn-cyan text-xs font-black transition cursor-pointer"
+          class="w-full py-3 rounded-xl btn-ultra-cyan text-xs font-black transition cursor-pointer"
         >
           Tercihleri Kaydet
         </button>
@@ -492,7 +589,6 @@
   <!-- Scripts -->
   <script src="app.js"></script>
   <script>
-    // Initialize Lucide icons
     lucide.createIcons();
   </script>
 </body>
