@@ -312,3 +312,89 @@ body {
 .modal-animate-in {
   animation: modalScaleIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ================= ULTRA TERMINAL UPGRADES (HyperData / Hypurrscan / GMGN) ================= */
+
+/* Price Level Channel / Progression Bar */
+.price-channel-container {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  height: 6px;
+  position: relative;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.price-channel-fill-profit {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.4), rgba(16, 185, 129, 0.9));
+  border-radius: 9999px;
+}
+
+.price-channel-fill-loss {
+  position: absolute;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(244, 63, 94, 0.4), rgba(244, 63, 94, 0.9));
+  border-radius: 9999px;
+}
+
+.price-dot-pointer {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* Liquidation Radar */
+.radar-card-safe {
+  border-left: 3px solid #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.radar-card-warn {
+  border-left: 3px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.radar-card-danger {
+  border-left: 3px solid #f43f5e;
+  background: rgba(244, 63, 94, 0.1);
+  animation: dangerPulse 2s infinite ease-in-out;
+}
+
+@keyframes dangerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+  50% { box-shadow: 0 0 16px rgba(244, 63, 94, 0.35); }
+}
+
+/* Cyberpunk PnL Share Card */
+.cyber-pnl-card {
+  background: linear-gradient(145deg, #090e1f 0%, #05070d 100%);
+  border: 1px solid rgba(0, 242, 254, 0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 242, 254, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.cyber-pnl-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 242, 254, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.holo-tag {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(168, 85, 247, 0.15));
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  backdrop-filter: blur(8px);
+}
+

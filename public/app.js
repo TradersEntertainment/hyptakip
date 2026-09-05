@@ -93,7 +93,7 @@ function shortAddress(addr) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-// Real Crisp SVG Coin Badges
+// Real Crisp SVG Coin Badges (Top Hyperliquid Assets)
 function getCoinBadge(coin) {
   const c = (coin || '').toUpperCase();
   
@@ -144,6 +144,44 @@ function getCoinBadge(coin) {
       <svg class="w-4 h-4 text-purple-300" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 2C6.48 2 2 6.48 2 12c0 3.31 1.61 6.24 4.09 8.04l.91-2.04c-.65-.63-1.12-1.42-1.37-2.31 1.05.62 2.27.97 3.57.97h5.6c1.3 0 2.52-.35 3.57-.97-.25.89-.72 1.68-1.37 2.31l.91 2.04C20.39 18.24 22 15.31 22 12c0-5.52-4.48-10-10-10zm-3 8c.83 0 1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5S8.17 10 9 10zm6 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z"/>
       </svg>
+    </div>`;
+  }
+
+  if (c === 'DOGE') {
+    return `<div class="w-7 h-7 rounded-xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/10">
+      <span class="text-amber-400 font-black font-mono text-xs">Ð</span>
+    </div>`;
+  }
+
+  if (c === 'XRP') {
+    return `<div class="w-7 h-7 rounded-xl bg-slate-800 border border-cyan-400/40 flex items-center justify-center shrink-0">
+      <span class="text-cyan-300 font-black font-mono text-[11px]">✕RP</span>
+    </div>`;
+  }
+
+  if (c === 'SUI') {
+    return `<div class="w-7 h-7 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center shrink-0">
+      <svg class="w-4 h-4 text-sky-300" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L4 12l8 10 8-10L12 2zm0 4.5l5 6.5-5 6.2-5-6.2 5-6.5z"/>
+      </svg>
+    </div>`;
+  }
+
+  if (c === 'AVAX') {
+    return `<div class="w-7 h-7 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center shrink-0">
+      <span class="text-rose-400 font-black font-mono text-[10px]">▲</span>
+    </div>`;
+  }
+
+  if (c === 'LINK') {
+    return `<div class="w-7 h-7 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center shrink-0">
+      <span class="text-blue-400 font-black font-mono text-[10px]">⬡</span>
+    </div>`;
+  }
+
+  if (c === 'PEPE') {
+    return `<div class="w-7 h-7 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
+      <span class="text-emerald-400 font-bold text-xs">🐸</span>
     </div>`;
   }
 
@@ -519,17 +557,59 @@ async function selectWallet(wallet, fetchFills = true) {
   }
 }
 
-// Render Whale Metrics & Positions Table
+// Render Whale Metrics & Intelligence Profile
 function renderWhaleState(state) {
+  const accVal = parseFloat(state.accountValue || 0);
+  const totalNtl = parseFloat(state.totalNtlPos || 0);
   const accValEl = document.getElementById('metric-account-value');
   const prevAccVal = accValEl.textContent;
-  const newAccVal = formatUsd(state.accountValue || 0);
+  const newAccVal = formatUsd(accVal);
   accValEl.textContent = newAccVal;
 
   if (prevAccVal && prevAccVal !== newAccVal && prevAccVal !== '$0.00') {
     accValEl.classList.remove('flash-up', 'flash-down');
     void accValEl.offsetWidth;
     accValEl.classList.add('flash-up');
+  }
+
+  // Arkham-Style Dynamic Whale Intelligence Tier
+  const tierEl = document.getElementById('view-whale-tier');
+  if (tierEl) {
+    if (accVal >= 1000000) {
+      tierEl.innerHTML = '<span>👑 APEX WHALE ($1M+)</span>';
+      tierEl.className = 'tag-whale px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 shadow-md shadow-purple-500/20 border-purple-400 text-purple-200';
+    } else if (accVal >= 250000) {
+      tierEl.innerHTML = '<span>🐋 GIGA CHAD ($250K+)</span>';
+      tierEl.className = 'tag-whale px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 shadow-md shadow-cyan-500/20 border-cyan-400 text-cyan-200';
+    } else if (accVal >= 50000) {
+      tierEl.innerHTML = '<span>🦈 SMART WHALE</span>';
+      tierEl.className = 'tag-whale px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 border-blue-400 text-blue-200';
+    } else {
+      tierEl.innerHTML = '<span>🐬 SWIFT TRADER</span>';
+      tierEl.className = 'tag-whale px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 border-slate-600 text-slate-300';
+    }
+  }
+
+  // Effective Leverage Risk Gauge
+  const levRiskEl = document.getElementById('view-leverage-risk');
+  if (levRiskEl) {
+    const effLev = accVal > 0 ? (totalNtl / accVal) : 0;
+    if (effLev === 0) {
+      levRiskEl.textContent = 'RİSK: BOŞTA';
+      levRiskEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-800 text-slate-400 border border-white/10';
+    } else if (effLev < 2.5) {
+      levRiskEl.textContent = `RİSK: DÜŞÜK (${effLev.toFixed(1)}x)`;
+      levRiskEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+    } else if (effLev < 6.0) {
+      levRiskEl.textContent = `RİSK: NORMAL (${effLev.toFixed(1)}x)`;
+      levRiskEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30';
+    } else if (effLev < 15.0) {
+      levRiskEl.textContent = `RİSK: YÜKSEK (${effLev.toFixed(1)}x)`;
+      levRiskEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30';
+    } else {
+      levRiskEl.textContent = `🔥 DEGEN RİSK (${effLev.toFixed(1)}x)`;
+      levRiskEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse';
+    }
   }
 
   const unPnl = state.totalUnrealizedPnl || 0;
@@ -547,18 +627,172 @@ function renderWhaleState(state) {
   }
 
   document.getElementById('metric-withdrawable').textContent = formatUsd(state.withdrawable || 0);
-  document.getElementById('metric-notional-value').textContent = formatUsd(state.totalNtlPos || 0);
+  document.getElementById('metric-notional-value').textContent = formatUsd(totalNtl);
 
   const posCount = (state.positions && state.positions.length) || 0;
   document.getElementById('metric-pos-count').textContent = `${posCount} Pozisyon`;
   document.getElementById('tab-count-positions').textContent = posCount;
 
-  // Render Charts & Tables
+  // Render Charts, Liquidation Radar & Positions Table
   renderCharts(state.positions || []);
+  renderLiquidationRadar(state.positions || []);
   renderPositionsTable(state.positions || []);
 }
 
-// Render Positions Table with Real SVG Logos and Price Level Bars
+// Render Liquidation Danger Radar (HyperData Terminal / Hypurrscan style)
+function renderLiquidationRadar(positions) {
+  const container = document.getElementById('radar-cards-container');
+  const pill = document.getElementById('radar-highest-risk-pill');
+  if (!container) return;
+
+  const validPositions = positions.filter(p => p.liquidationPrice && p.liqDistancePct !== null);
+
+  if (validPositions.length === 0) {
+    if (pill) {
+      pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold';
+      pill.textContent = 'TÜM POZİSYONLAR GÜVENLİ';
+    }
+    container.innerHTML = `
+      <div class="col-span-full py-3 px-4 rounded-xl bg-slate-950/60 border border-white/5 flex items-center justify-between text-xs text-slate-400">
+        <div class="flex items-center gap-2">
+          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+          <span>Aktif pozisyonlarda yakın likidasyon riski bulunmuyor.</span>
+        </div>
+        <span class="text-[10px] font-mono text-slate-500">Güvenli Bölge (>%50 mesafe)</span>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  // Sort ascending by distance (most critical first)
+  validPositions.sort((a, b) => (a.liqDistancePct || 100) - (b.liqDistancePct || 100));
+
+  const closest = validPositions[0];
+  const closestDist = closest.liqDistancePct || 100;
+
+  if (pill) {
+    if (closestDist < 15) {
+      pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold animate-pulse';
+      pill.textContent = `🚨 KRİTİK TEHLİKE: %${closestDist.toFixed(1)} (${closest.coin})`;
+    } else if (closestDist < 30) {
+      pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold';
+      pill.textContent = `⚠️ DİKKAT: %${closestDist.toFixed(1)} (${closest.coin})`;
+    } else {
+      pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold';
+      pill.textContent = `TÜM POZİSYONLAR GÜVENLİ (%${closestDist.toFixed(1)})`;
+    }
+  }
+
+  container.innerHTML = validPositions.slice(0, 3).map(p => {
+    const dist = p.liqDistancePct || 100;
+    let cardClass = 'radar-card-safe';
+    let textClass = 'text-emerald-400';
+    let badgeLabel = 'GÜVENLİ';
+
+    if (dist < 15) {
+      cardClass = 'radar-card-danger';
+      textClass = 'text-rose-400 font-bold';
+      badgeLabel = 'KRİTİK RİSK';
+    } else if (dist < 30) {
+      cardClass = 'radar-card-warn';
+      textClass = 'text-amber-400 font-bold';
+      badgeLabel = 'DİKKAT';
+    }
+
+    return `
+      <div class="p-3 rounded-xl border border-white/5 ${cardClass} flex flex-col justify-between space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            ${getCoinBadge(p.coin)}
+            <div>
+              <span class="font-extrabold text-xs text-white">${p.coin}</span>
+              <span class="text-[9px] font-mono text-slate-400 block">${p.side} (${p.leverage})</span>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="text-[10px] font-mono ${textClass}">%${dist.toFixed(1)} Mesafe</span>
+            <span class="text-[9px] block text-slate-500">${badgeLabel}</span>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400">
+            <span>Mark: $${p.currentPrice.toFixed(4)}</span>
+            <span class="text-rose-400 font-semibold">Liq: $${p.liquidationPrice.toFixed(4)}</span>
+          </div>
+          <div class="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
+            <div class="h-full ${dist < 15 ? 'bg-rose-500' : (dist < 30 ? 'bg-amber-400' : 'bg-emerald-400')}" style="width: ${Math.min(100, Math.max(5, dist))}%"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  lucide.createIcons();
+}
+
+// Render Price Level Channel Progress Bar for each position
+function renderPriceChannel(p) {
+  const isLong = p.side === 'LONG';
+  const entry = parseFloat(p.entryPrice) || 0;
+  const mark = p.currentPrice || 0;
+  const liq = p.liquidationPrice || 0;
+  const dist = p.liqDistancePct !== null ? p.liqDistancePct : 100;
+
+  // Calculate where Mark sits relative to entry (profit/loss)
+  const isProfit = p.unrealizedPnl >= 0;
+  let progressPct = 50; // default center
+
+  if (entry > 0 && liq > 0) {
+    if (isLong) {
+      // Long: liq is below entry. If mark is below entry, it moves towards liq (loss).
+      // If mark > entry, it moves right (profit).
+      const totalSpan = Math.max(entry * 1.15, mark) - liq;
+      progressPct = totalSpan > 0 ? ((mark - liq) / totalSpan) * 100 : 50;
+    } else {
+      // Short: liq is above entry. If mark is above entry, it moves towards liq (loss).
+      // If mark < entry, it moves left towards profit.
+      const totalSpan = liq - Math.min(entry * 0.85, mark);
+      progressPct = totalSpan > 0 ? ((liq - mark) / totalSpan) * 100 : 50;
+    }
+  } else {
+    progressPct = isProfit ? 75 : 25;
+  }
+
+  progressPct = Math.min(95, Math.max(5, progressPct));
+
+  let distBadge = '';
+  if (liq > 0) {
+    if (dist < 15) distBadge = `<span class="text-[9px] font-bold text-rose-400 bg-rose-500/10 px-1 rounded animate-pulse">Liq: %${dist.toFixed(1)}</span>`;
+    else if (dist < 30) distBadge = `<span class="text-[9px] font-semibold text-amber-400 bg-amber-500/10 px-1 rounded">Liq: %${dist.toFixed(1)}</span>`;
+    else distBadge = `<span class="text-[9px] text-slate-500">Liq: %${dist.toFixed(1)}</span>`;
+  } else {
+    distBadge = `<span class="text-[9px] text-slate-600">Liq: Yok</span>`;
+  }
+
+  return `
+    <div class="py-1 min-w-[210px]">
+      <div class="flex items-center justify-between text-[10px] font-mono">
+        <span class="text-slate-400">G: <b class="text-white">$${p.entryPrice}</b></span>
+        <span class="${isProfit ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}">M: $${mark.toFixed(4)}</span>
+        <span class="text-slate-500">L: ${liq > 0 ? '$' + liq.toFixed(4) : '-'}</span>
+      </div>
+
+      <div class="price-channel-container my-1.5">
+        <div class="${isProfit ? 'price-channel-fill-profit' : 'price-channel-fill-loss'}" style="width: ${progressPct}%"></div>
+        <div class="price-dot-pointer ${isProfit ? 'bg-emerald-400 text-emerald-400' : 'bg-rose-400 text-rose-400'}" style="left: ${progressPct}%"></div>
+      </div>
+
+      <div class="flex items-center justify-between text-[9px] font-mono">
+        <span class="${isProfit ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}">${isProfit ? '▲ KÂRDA' : '▼ ZARARDA'}</span>
+        ${distBadge}
+      </div>
+    </div>
+  `;
+}
+
+// Render Positions Table with Real SVG Logos, Channel Bars, and Action Buttons
 function renderPositionsTable(positions) {
   const tbody = document.getElementById('positions-table-body');
   if (!tbody) return;
@@ -566,7 +800,7 @@ function renderPositionsTable(positions) {
   if (positions.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="text-center py-16 text-slate-500 font-sans">
+        <td colspan="7" class="text-center py-16 text-slate-500 font-sans">
           <div class="flex flex-col items-center justify-center gap-2.5">
             <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-600 border border-white/5">
               <i data-lucide="shield-check" class="w-5 h-5"></i>
@@ -593,32 +827,10 @@ function renderPositionsTable(positions) {
     const pnlColor = p.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
     const roeColor = p.roePct >= 0 ? 'text-emerald-400' : 'text-rose-400';
 
-    // Liquidation Gauge display
-    let liqDisplay = `<span class="text-slate-600 font-sans text-xs">-</span>`;
-    if (p.liquidationPrice) {
-      const dist = p.liqDistancePct !== null ? p.liqDistancePct : 100;
-      let distBadge = '';
-
-      if (dist < 10) {
-        distBadge = `<span class="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/30 animate-pulse">KRİTİK %${dist.toFixed(1)}</span>`;
-      } else if (dist < 25) {
-        distBadge = `<span class="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">%${dist.toFixed(1)} mesafe</span>`;
-      } else {
-        distBadge = `<span class="text-[10px] text-slate-400">%${dist.toFixed(1)} mesafe</span>`;
-      }
-
-      liqDisplay = `
-        <div class="text-right">
-          <div class="font-bold text-white">$${p.liquidationPrice.toFixed(4)}</div>
-          <div class="mt-1">${distBadge}</div>
-        </div>
-      `;
-    }
-
     return `
       <tr class="ultra-tr">
         <!-- Coin with Real SVG Logo -->
-        <td class="py-3.5 px-4 font-bold text-white flex items-center gap-2.5 font-sans">
+        <td class="py-3 px-4 font-bold text-white flex items-center gap-2.5 font-sans">
           ${getCoinBadge(p.coin)}
           <div>
             <a href="https://app.hyperliquid.xyz/trade/${p.coin}" target="_blank" class="hover:text-cyan-400 transition font-extrabold text-sm">
@@ -629,28 +841,23 @@ function renderPositionsTable(positions) {
         </td>
 
         <!-- Yön -->
-        <td class="py-3.5 px-3">
+        <td class="py-3 px-3">
           ${sideBadge}
         </td>
 
         <!-- Boyut -->
-        <td class="py-3.5 px-3 text-right">
+        <td class="py-3 px-3 text-right">
           <div class="font-bold text-white">${formatUsd(p.positionValue)}</div>
           <div class="text-[10px] text-slate-400">${formatCrypto(p.size)} ${p.coin}</div>
         </td>
 
-        <!-- Giriş Fiyatı -->
-        <td class="py-3.5 px-3 text-right text-slate-300">
-          $${p.entryPrice}
-        </td>
-
-        <!-- Mark Fiyatı -->
-        <td class="py-3.5 px-3 text-right text-white font-semibold">
-          $${p.currentPrice.toFixed(4)}
+        <!-- Fiyat Seviyesi (Giriş ➔ Mark ➔ Liq) Visual Channel Bar -->
+        <td class="py-3 px-4">
+          ${renderPriceChannel(p)}
         </td>
 
         <!-- PnL -->
-        <td class="py-3.5 px-3 text-right">
+        <td class="py-3 px-3 text-right">
           <div class="font-bold ${pnlColor}">${p.unrealizedPnl >= 0 ? '+' : ''}${formatUsd(p.unrealizedPnl)}</div>
           <div class="text-[10px] font-semibold ${roeColor}">(${p.roePct >= 0 ? '+' : ''}${p.roePct.toFixed(2)}% ROE)</div>
           <!-- Visual PnL Trail -->
@@ -659,15 +866,44 @@ function renderPositionsTable(positions) {
           </div>
         </td>
 
-        <!-- Likidasyon -->
-        <td class="py-3.5 px-3">
-          ${liqDisplay}
-        </td>
-
         <!-- Kaldıraç & Teminat -->
-        <td class="py-3.5 px-3 text-right font-sans">
+        <td class="py-3 px-3 text-right font-sans">
           <div class="font-bold text-slate-200 text-xs">${p.leverage}</div>
           <div class="text-[10px] text-slate-400 font-mono">${formatUsd(p.marginUsed)}</div>
+        </td>
+
+        <!-- Hızlı İşlemler (Hypurrscan, HL Trade, PnL Card) -->
+        <td class="py-3 px-3 text-center">
+          <div class="flex items-center justify-center gap-1.5">
+            <!-- Hypurrscan Button -->
+            <a 
+              href="https://hypurrscan.io/address/${selectedWallet ? selectedWallet.address : ''}" 
+              target="_blank" 
+              title="Hypurrscan'de İncele" 
+              class="p-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition hover:scale-105"
+            >
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </a>
+
+            <!-- Hyperliquid Direct Trade Button -->
+            <a 
+              href="https://app.hyperliquid.xyz/trade/${p.coin}" 
+              target="_blank" 
+              title="Hyperliquid'de İşlem Aç" 
+              class="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition hover:scale-105"
+            >
+              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+            </a>
+
+            <!-- PnL Share Card Button -->
+            <button 
+              onclick="openShareCard('${p.coin}')" 
+              title="PnL Kartı Oluştur ve Paylaş" 
+              class="p-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 transition hover:scale-105 cursor-pointer"
+            >
+              <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -675,6 +911,87 @@ function renderPositionsTable(positions) {
 
   lucide.createIcons();
 }
+
+// Cyberpunk PnL Share Card Generator
+window.openShareCard = function(coinName) {
+  playClickSound();
+  if (!selectedWallet) return;
+  const positions = (selectedWallet.state && selectedWallet.state.positions) || [];
+  let targetPos = positions.find(p => p.coin === coinName);
+  if (!targetPos && positions.length > 0) targetPos = positions[0];
+
+  const modal = document.getElementById('modal-share-card');
+  if (!modal) return;
+
+  document.getElementById('card-whale-name').textContent = selectedWallet.label || 'Whale Trader';
+  document.getElementById('card-whale-address').textContent = shortAddress(selectedWallet.address);
+
+  const accVal = parseFloat((selectedWallet.state && selectedWallet.state.accountValue) || 0);
+  const tierEl = document.getElementById('card-whale-tier');
+  if (tierEl) {
+    tierEl.textContent = accVal >= 1000000 ? '👑 APEX WHALE' : (accVal >= 250000 ? '🐋 GIGA CHAD' : '🦈 SMART WHALE');
+  }
+
+  if (targetPos) {
+    document.getElementById('card-coin-badge').innerHTML = getCoinBadge(targetPos.coin);
+    document.getElementById('card-coin-name').textContent = targetPos.coin;
+
+    const isLong = targetPos.side === 'LONG';
+    const sideBadge = document.getElementById('card-side-badge');
+    sideBadge.className = isLong ? 'badge-long px-3 py-1 rounded-xl text-xs font-black' : 'badge-short px-3 py-1 rounded-xl text-xs font-black';
+    sideBadge.textContent = `${isLong ? '🟢' : '🔴'} ${targetPos.leverage} ${targetPos.side}`;
+
+    const isProfit = targetPos.unrealizedPnl >= 0;
+    const roeEl = document.getElementById('card-roe-val');
+    const pnlEl = document.getElementById('card-pnl-val');
+
+    roeEl.textContent = `${isProfit ? '+' : ''}${targetPos.roePct.toFixed(2)}%`;
+    roeEl.className = `text-3xl font-black font-mono drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`;
+
+    pnlEl.textContent = `${isProfit ? '+' : ''}${formatUsd(targetPos.unrealizedPnl)}`;
+    pnlEl.className = `text-sm font-bold font-mono mt-1 ${isProfit ? 'text-emerald-300' : 'text-rose-300'}`;
+
+    document.getElementById('card-entry-price').textContent = '$' + targetPos.entryPrice;
+    document.getElementById('card-mark-price').textContent = '$' + targetPos.currentPrice.toFixed(4);
+  } else {
+    document.getElementById('card-coin-badge').innerHTML = getCoinBadge('HYPE');
+    document.getElementById('card-coin-name').textContent = 'GENEL KASA';
+    document.getElementById('card-side-badge').textContent = 'PORTFÖY';
+    document.getElementById('card-roe-val').textContent = formatUsd(accVal);
+    document.getElementById('card-pnl-val').textContent = 'Net Bakiye';
+  }
+
+  document.getElementById('card-timestamp').textContent = new Date().toLocaleTimeString('tr-TR');
+  modal.classList.remove('hidden');
+  lucide.createIcons();
+
+  // Setup Copy Text Listener
+  const copyBtn = document.getElementById('btn-copy-card-text');
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      playClickSound();
+      let text = '';
+      if (targetPos) {
+        text = `🚨 HYPERLIQUID BALİNA POZİSYONU 🚨\n` +
+          `👤 Balina: ${selectedWallet.label} (${shortAddress(selectedWallet.address)})\n` +
+          `⚡ İşlem: ${targetPos.side} ${targetPos.coin} (${targetPos.leverage})\n` +
+          `💰 Anlık PnL: ${targetPos.unrealizedPnl >= 0 ? '+' : ''}${formatUsd(targetPos.unrealizedPnl)} (${targetPos.roePct >= 0 ? '+' : ''}${targetPos.roePct.toFixed(2)}% ROE)\n` +
+          `🎯 Giriş: $${targetPos.entryPrice} | Mark: $${targetPos.currentPrice.toFixed(4)}\n` +
+          `🔗 Hypurrscan: https://hypurrscan.io/address/${selectedWallet.address}`;
+      } else {
+        text = `🐋 HYPERLIQUID BALİNA KASASI: ${selectedWallet.label} -> ${formatUsd(accVal)}\n` +
+          `🔗 Hypurrscan: https://hypurrscan.io/address/${selectedWallet.address}`;
+      }
+      navigator.clipboard.writeText(text);
+      showToast('Telegram / Twitter metni panoya kopyalandı! 📋', 'success');
+    };
+  }
+};
+
+// Wire Top PnL Card Button in Whale Header
+document.getElementById('btn-open-share-card')?.addEventListener('click', () => {
+  openShareCard();
+});
 
 // Load Fills Tab
 async function loadFills() {
