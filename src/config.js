@@ -5,13 +5,16 @@ require('dotenv').config();
 // Determine persistent data directory (Railway volume support)
 let dataDir = process.env.DATA_DIR;
 
-if (!dataDir) {
-  // If running inside container with mounted /data volume
-  if (fs.existsSync('/data')) {
+if (fs.existsSync('/data')) {
+  // If running inside container / Railway with mounted /data volume,
+  // automatically use /data even if user wrote ./data or left it empty
+  if (!dataDir || dataDir === './data' || dataDir === 'data' || dataDir === '/data') {
     dataDir = '/data';
-  } else {
-    dataDir = path.join(__dirname, '../data');
   }
+}
+
+if (!dataDir) {
+  dataDir = path.join(__dirname, '../data');
 }
 
 // Ensure directory exists
