@@ -166,7 +166,7 @@ app.get('/api/settings', (req, res) => {
   try {
     const settings = db.getSettings();
     const rawToken = process.env.TELEGRAM_BOT_TOKEN ? process.env.TELEGRAM_BOT_TOKEN.trim() : '';
-    const defaultChatId = process.env.TELEGRAM_DEFAULT_CHAT_ID ? process.env.TELEGRAM_DEFAULT_CHAT_ID.trim() : '';
+    const defaultChatId = process.env.TELEGRAM_DEFAULT_CHAT_ID ? process.env.TELEGRAM_DEFAULT_CHAT_ID.trim() : config.DEFAULT_MAIN_CHAT_ID;
     const maskedToken = rawToken ? `${rawToken.slice(0, 6)}••••••••${rawToken.slice(-4)}` : '';
 
     res.json({
@@ -193,7 +193,7 @@ app.post('/api/settings', (req, res) => {
 
     const updated = db.updateSettings(toUpdate);
     const rawToken = process.env.TELEGRAM_BOT_TOKEN ? process.env.TELEGRAM_BOT_TOKEN.trim() : '';
-    const defaultChatId = process.env.TELEGRAM_DEFAULT_CHAT_ID ? process.env.TELEGRAM_DEFAULT_CHAT_ID.trim() : '';
+    const defaultChatId = process.env.TELEGRAM_DEFAULT_CHAT_ID ? process.env.TELEGRAM_DEFAULT_CHAT_ID.trim() : config.DEFAULT_MAIN_CHAT_ID;
 
     res.json({
       success: true,

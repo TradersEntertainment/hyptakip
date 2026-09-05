@@ -49,7 +49,7 @@ function initDb() {
   // Default settings
   const defaultSettings = [
     ['telegram_bot_token', process.env.TELEGRAM_BOT_TOKEN || ''],
-    ['telegram_default_chat_id', process.env.TELEGRAM_DEFAULT_CHAT_ID || ''],
+    ['telegram_default_chat_id', process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID],
     ['poll_interval_seconds', process.env.POLL_INTERVAL_SECONDS || '5'],
     ['notifications_enabled', '1'],
     ['sound_enabled', '1']
@@ -63,18 +63,25 @@ function initDb() {
     insertSetting.run(key, val);
   }
 
-  // Seed default main wallet if none exists
-  const walletCount = database.prepare('SELECT COUNT(*) AS count FROM wallets').get().count;
-  if (walletCount === 0) {
+  // Seed or update default main wallet
+  const mainWallet = database.prepare('SELECT * FROM wallets WHERE LOWER(address) = LOWER(?)').get(config.DEFAULT_MAIN_WALLET);
+  if (!mainWallet) {
     database.prepare(`
-      INSERT INTO wallets (address, label, threshold_pct, is_active)
-      VALUES (?, ?, ?, 1)
+      INSERT INTO wallets (address, label, telegram_chat_id, threshold_pct, is_active)
+      VALUES (?, ?, ?, ?, 1)
     `).run(
       config.DEFAULT_MAIN_WALLET.toLowerCase(),
       config.DEFAULT_MAIN_LABEL,
+      config.DEFAULT_MAIN_CHAT_ID,
       10.0
     );
-    console.log(`[DB] Varsayılan ana cüzdan eklendi: ${config.DEFAULT_MAIN_WALLET}`);
+    console.log(`[DB] Varsayılan ana cüzdan eklendi: ${config.DEFAULT_MAIN_WALLET} (Chat ID: ${config.DEFAULT_MAIN_CHAT_ID})`);
+  } else if (!mainWallet.telegram_chat_id || mainWallet.telegram_chat_id === '') {
+    database.prepare('UPDATE wallets SET telegram_chat_id = ? WHERE LOWER(address) = LOWER(?)').run(
+      config.DEFAULT_MAIN_CHAT_ID,
+      config.DEFAULT_MAIN_WALLET.toLowerCase()
+    );
+    console.log(`[DB] Ana cüzdan Telegram Chat ID güncellendi: ${config.DEFAULT_MAIN_CHAT_ID}`);
   }
 
   console.log(`[DB] Veritabanı hazır (${config.DB_PATH})`);

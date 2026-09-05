@@ -1,4 +1,5 @@
 const db = require('./db');
+const config = require('./config');
 
 /**
  * Format currency with proper commas and decimals
@@ -26,7 +27,7 @@ function shortAddr(addr) {
 async function sendTelegramMessage(text, customChatId = null) {
   const settings = db.getSettings();
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = customChatId || process.env.TELEGRAM_DEFAULT_CHAT_ID;
+  const chatId = customChatId || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID;
 
   if (!token || !token.trim()) {
     return { 
@@ -99,7 +100,7 @@ async function notifyPositionAlert({ type, wallet, current, previous = null, dif
   const settings = db.getSettings();
   const addressShort = shortAddr(wallet.address);
   const hyperdashUrl = `https://hyperdash.com/address/${wallet.address}`;
-  const targetChatId = wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID;
+  const targetChatId = wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID;
 
   let title = '';
   let body = '';
