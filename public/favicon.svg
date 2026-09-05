@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect width="100" height="100" rx="28" fill="#070a14" />
+  <rect x="2" y="2" width="96" height="96" rx="26" stroke="url(#grad)" stroke-width="3" stroke-opacity="0.8" />
+  
+  <!-- Cyber Whale / Lightning Bolt Symbol -->
+  <path d="M52 16L24 54H48L44 84L76 46H52L58 24L52 16Z" fill="url(#grad)" filter="url(#glow)" />
+  <circle cx="70" cy="30" r="4" fill="#00f2fe" />
+</svg>

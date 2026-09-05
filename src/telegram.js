@@ -99,6 +99,7 @@ Bu bildirimi alıyorsanız, Railway üzerinden eklediğiniz Telegram botu soruns
 async function notifyPositionAlert({ type, wallet, current, previous = null, diffPct = 0 }) {
   const settings = db.getSettings();
   const addressShort = shortAddr(wallet.address);
+  const hypurrscanUrl = `https://hypurrscan.io/address/${wallet.address}`;
   const hyperdashUrl = `https://hyperdash.com/address/${wallet.address}`;
   const targetChatId = wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID;
 
@@ -122,7 +123,7 @@ ${title}
 ${current.liquidationPrice ? `⚠️ <b>Likidasyon Fiyatı:</b> $${current.liquidationPrice} (${current.liqDistancePct ? `%${current.liqDistancePct.toFixed(1)} uzaklık` : ''})` : ''}
 ⏱️ <b>Zaman:</b> ${new Date().toLocaleString('tr-TR')}
 
-🔗 <a href="${hyperdashUrl}">Hyperdash'ta İncele</a> | <a href="https://app.hyperliquid.xyz/trade/${current.coin}">Hyperliquid Trade</a>
+🔗 <a href="${hypurrscanUrl}"><b>Hypurrscan'de İncele</b></a> | <a href="${hyperdashUrl}">Hyperdash</a> | <a href="https://app.hyperliquid.xyz/trade/${current.coin}">Trade</a>
     `.trim();
 
   } else if (type === 'SIZE_CHANGE') {
@@ -145,7 +146,7 @@ ${title}
 ⚡ <b>Kaldıraç:</b> ${current.leverage}
 ⏱️ <b>Zaman:</b> ${new Date().toLocaleString('tr-TR')}
 
-🔗 <a href="${hyperdashUrl}">Hyperdash'ta İncele</a>
+🔗 <a href="${hypurrscanUrl}"><b>Hypurrscan'de İncele</b></a> | <a href="${hyperdashUrl}">Hyperdash</a>
     `.trim();
 
   } else if (type === 'CLOSED_POSITION') {
@@ -160,7 +161,7 @@ ${title}
 🎯 <b>Giriş Fiyatı:</b> $${previous.entryPrice}
 ⏱️ <b>Zaman:</b> ${new Date().toLocaleString('tr-TR')}
 
-🔗 <a href="${hyperdashUrl}">Hyperdash'ta İncele</a>
+🔗 <a href="${hypurrscanUrl}"><b>Hypurrscan'de İncele</b></a> | <a href="${hyperdashUrl}">Hyperdash</a>
     `.trim();
 
   } else if (type === 'LIQUIDATION_RISK') {
@@ -175,7 +176,7 @@ ${title}
 📊 <b>Risk Altındaki Değer:</b> ${formatUsd(current.positionValue)}
 ⏱️ <b>Zaman:</b> ${new Date().toLocaleString('tr-TR')}
 
-🔗 <a href="${hyperdashUrl}">Acil Hyperdash'ta İncele</a>
+🔗 <a href="${hypurrscanUrl}"><b>Acil Hypurrscan'de İncele</b></a> | <a href="${hyperdashUrl}">Hyperdash</a>
     `.trim();
   }
 

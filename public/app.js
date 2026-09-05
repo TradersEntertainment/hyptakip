@@ -4,8 +4,11 @@ let selectedWallet = null;
 let currentTab = 'positions';
 let autoRefreshTimer = null;
 let appSettings = {};
-let previousPositionsMap = new Map();
 let soundEnabled = localStorage.getItem('sound_enabled') !== 'false';
+
+// Chart.js instances
+let allocationChart = null;
+let pnlChart = null;
 
 // Web Audio API Synthesizer (Zero external audio files needed!)
 let audioCtx = null;
@@ -90,6 +93,66 @@ function shortAddress(addr) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+// Real Crisp SVG Coin Badges
+function getCoinBadge(coin) {
+  const c = (coin || '').toUpperCase();
+  
+  if (c === 'BTC') {
+    return `<div class="w-7 h-7 rounded-xl bg-[#f7931a]/15 border border-[#f7931a]/40 flex items-center justify-center shrink-0 shadow-sm shadow-[#f7931a]/10">
+      <svg class="w-4 h-4 text-[#f7931a]" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M14.7 10.3c.3-.8.2-1.8-.4-2.4-.7-.7-1.8-.9-2.8-.8V5.5h-1.8v1.6H8.2V5.5H6.4v1.7H3.5v1.8h1.6c.3 0 .5.2.5.5v5.8c0 .3-.2.5-.5.5H3.5v1.8h2.9v1.7h1.8v-1.6h1.5v1.6h1.8v-1.7c2.5.2 4.4-.9 4.8-3.4.3-1.6-.4-2.8-1.6-3.4zm-4.8-1.5h1.9c1 0 1.8.4 1.8 1.4s-.8 1.4-1.8 1.4H9.9V8.8zm2.4 6.7H9.9v-3h2.4c1.2 0 2 .5 2 1.5s-.8 1.5-2 1.5z"/>
+      </svg>
+    </div>`;
+  }
+  
+  if (c === 'ETH') {
+    return `<div class="w-7 h-7 rounded-xl bg-[#627eea]/15 border border-[#627eea]/40 flex items-center justify-center shrink-0 shadow-sm shadow-[#627eea]/10">
+      <svg class="w-4 h-4 text-[#8a9cf5]" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 1.5L4.5 13.8 12 18.2l7.5-4.4L12 1.5zm0 18.2L4.5 15.2 12 22.5l7.5-7.3L12 19.7z"/>
+      </svg>
+    </div>`;
+  }
+
+  if (c === 'SOL') {
+    return `<div class="w-7 h-7 rounded-xl bg-gradient-to-br from-[#9945ff]/20 to-[#14f195]/20 border border-[#14f195]/40 flex items-center justify-center shrink-0">
+      <svg class="w-4 h-4 text-[#14f195]" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M4 17.5h13.2l2.8-2.8H6.8L4 17.5zm0-8.2h13.2l2.8-2.8H6.8L4 9.3zm2.8 1.4L4 13.5h13.2l2.8-2.8H6.8z"/>
+      </svg>
+    </div>`;
+  }
+
+  if (c === 'ASTER') {
+    return `<div class="w-7 h-7 rounded-xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center shrink-0 shadow-sm shadow-cyan-500/20">
+      <svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    </div>`;
+  }
+
+  if (c === 'HYPE') {
+    return `<div class="w-7 h-7 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
+      <svg class="w-4 h-4 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+        <line x1="12" y1="22.08" x2="12" y2="12" />
+      </svg>
+    </div>`;
+  }
+
+  if (c === 'PURR') {
+    return `<div class="w-7 h-7 rounded-xl bg-purple-500/20 border border-purple-400/50 flex items-center justify-center shrink-0 shadow-sm shadow-purple-500/20">
+      <svg class="w-4 h-4 text-purple-300" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.48 2 2 6.48 2 12c0 3.31 1.61 6.24 4.09 8.04l.91-2.04c-.65-.63-1.12-1.42-1.37-2.31 1.05.62 2.27.97 3.57.97h5.6c1.3 0 2.52-.35 3.57-.97-.25.89-.72 1.68-1.37 2.31l.91 2.04C20.39 18.24 22 15.31 22 12c0-5.52-4.48-10-10-10zm-3 8c.83 0 1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5S8.17 10 9 10zm6 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z"/>
+      </svg>
+    </div>`;
+  }
+
+  // Fallback high tech badge
+  return `<div class="w-7 h-7 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center text-[10px] text-cyan-300 font-black shrink-0">
+    ${c.slice(0, 3)}
+  </div>`;
+}
+
 function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
@@ -146,6 +209,157 @@ async function loadMarketTicker() {
   } catch (e) {
     console.error('Ticker fetch error:', e);
   }
+}
+
+// Render Interactive Position Charts (Chart.js)
+function renderCharts(positions) {
+  if (typeof Chart === 'undefined') return;
+  const allocCanvas = document.getElementById('chart-allocation');
+  const pnlCanvas = document.getElementById('chart-pnl');
+  if (!allocCanvas || !pnlCanvas) return;
+
+  let totalNotional = 0;
+  let totalLong = 0;
+  let totalShort = 0;
+
+  for (const p of positions) {
+    const val = parseFloat(p.positionValue || 0);
+    totalNotional += val;
+    if (p.side === 'LONG') totalLong += val;
+    else totalShort += val;
+  }
+
+  // Update Doughnut Center & Ratio Bar
+  const totalEl = document.getElementById('chart-allocation-total');
+  if (totalEl) totalEl.textContent = formatUsd(totalNotional);
+
+  const ratioPill = document.getElementById('chart-long-short-ratio');
+  const labelLong = document.getElementById('label-ratio-long');
+  const labelShort = document.getElementById('label-ratio-short');
+  const barLong = document.getElementById('bar-ratio-long');
+  const barShort = document.getElementById('bar-ratio-short');
+
+  const longPct = totalNotional > 0 ? (totalLong / totalNotional) * 100 : 50;
+  const shortPct = totalNotional > 0 ? (totalShort / totalNotional) * 100 : 50;
+
+  if (ratioPill) {
+    if (longPct >= shortPct) {
+      ratioPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold';
+      ratioPill.textContent = `%${longPct.toFixed(0)} LONG AĞIRLIKLI`;
+    } else {
+      ratioPill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold';
+      ratioPill.textContent = `%${shortPct.toFixed(0)} SHORT AĞIRLIKLI`;
+    }
+  }
+
+  if (labelLong) labelLong.textContent = `🟢 Long: %${longPct.toFixed(1)} (${formatUsd(totalLong)})`;
+  if (labelShort) labelShort.textContent = `Short: %${shortPct.toFixed(1)} (${formatUsd(totalShort)}) 🔴`;
+  if (barLong) barLong.style.width = `${longPct}%`;
+  if (barShort) barShort.style.width = `${shortPct}%`;
+
+  if (positions.length === 0) {
+    if (allocationChart) { allocationChart.destroy(); allocationChart = null; }
+    if (pnlChart) { pnlChart.destroy(); pnlChart = null; }
+    return;
+  }
+
+  const neonColors = [
+    '#00f2fe', '#4facfe', '#a855f7', '#ec4899', '#10b981', '#f59e0b', '#6366f1', '#14b8a6'
+  ];
+
+  // Allocation Doughnut Chart
+  if (allocationChart) allocationChart.destroy();
+  allocationChart = new Chart(allocCanvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: positions.map(p => p.coin),
+      datasets: [{
+        data: positions.map(p => p.positionValue),
+        backgroundColor: positions.map((_, i) => neonColors[i % neonColors.length]),
+        borderWidth: 2,
+        borderColor: '#0a0e1a',
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10, 14, 26, 0.95)',
+          titleFont: { family: 'JetBrains Mono', size: 12, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          borderColor: 'rgba(0, 242, 254, 0.3)',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: function(context) {
+              const val = context.parsed;
+              const pct = totalNotional > 0 ? ((val / totalNotional) * 100).toFixed(1) : 0;
+              return ` ${context.label}: $${val.toLocaleString('en-US', { minimumFractionDigits: 2 })} (%${pct})`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // PnL Performance Bar Chart
+  if (pnlChart) pnlChart.destroy();
+  pnlChart = new Chart(pnlCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: positions.map(p => p.coin),
+      datasets: [{
+        label: 'Kâr / Zarar ($)',
+        data: positions.map(p => p.unrealizedPnl),
+        backgroundColor: positions.map(p => p.unrealizedPnl >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(244, 63, 94, 0.85)'),
+        borderColor: positions.map(p => p.unrealizedPnl >= 0 ? '#10b981' : '#f43f5e'),
+        borderWidth: 1.5,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10, weight: 'bold' } }
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: {
+            color: '#94a3b8',
+            font: { family: 'JetBrains Mono', size: 10 },
+            callback: function(v) {
+              return '$' + (v >= 1000 || v <= -1000 ? (v / 1000).toFixed(1) + 'k' : v);
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10, 14, 26, 0.95)',
+          titleFont: { family: 'JetBrains Mono', size: 12, weight: 'bold' },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: function(ctx) {
+              const p = positions[ctx.dataIndex];
+              const pnl = ctx.parsed.y;
+              return ` PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString('en-US', { minimumFractionDigits: 2 })} (${p.roePct >= 0 ? '+' : ''}${p.roePct.toFixed(2)}% ROE)`;
+            }
+          }
+        }
+      }
+    }
+  });
 }
 
 // Fetch Wallets
@@ -271,6 +485,7 @@ async function selectWallet(wallet, fetchFills = true) {
   const addrEl = document.getElementById('view-whale-address');
   const threshPill = document.getElementById('view-whale-threshold-pill');
   const threshLabel = document.getElementById('view-threshold-label');
+  const hypurrLink = document.getElementById('link-hypurrscan');
   const dashLink = document.getElementById('link-hyperdash');
   const hlLink = document.getElementById('link-hyperliquid-app');
 
@@ -278,6 +493,9 @@ async function selectWallet(wallet, fetchFills = true) {
   if (addrEl) addrEl.textContent = wallet.address;
   if (threshPill) threshPill.textContent = `EŞİK: %${wallet.threshold_pct || 10}`;
   if (threshLabel) threshLabel.textContent = `%${wallet.threshold_pct || 10}`;
+  
+  // Main Hypurrscan & Secondary Explorer Links
+  if (hypurrLink) hypurrLink.href = `https://hypurrscan.io/address/${wallet.address}`;
   if (dashLink) dashLink.href = `https://hyperdash.com/address/${wallet.address}`;
   if (hlLink) hlLink.href = `https://app.hyperliquid.xyz/explorer/address/${wallet.address}`;
 
@@ -308,10 +526,9 @@ function renderWhaleState(state) {
   const newAccVal = formatUsd(state.accountValue || 0);
   accValEl.textContent = newAccVal;
 
-  // Flash update animation if changed
   if (prevAccVal && prevAccVal !== newAccVal && prevAccVal !== '$0.00') {
     accValEl.classList.remove('flash-up', 'flash-down');
-    void accValEl.offsetWidth; // trigger reflow
+    void accValEl.offsetWidth;
     accValEl.classList.add('flash-up');
   }
 
@@ -336,10 +553,12 @@ function renderWhaleState(state) {
   document.getElementById('metric-pos-count').textContent = `${posCount} Pozisyon`;
   document.getElementById('tab-count-positions').textContent = posCount;
 
+  // Render Charts & Tables
+  renderCharts(state.positions || []);
   renderPositionsTable(state.positions || []);
 }
 
-// Render Positions Table with Ultra Badges and Risk Bars
+// Render Positions Table with Real SVG Logos and Price Level Bars
 function renderPositionsTable(positions) {
   const tbody = document.getElementById('positions-table-body');
   if (!tbody) return;
@@ -379,17 +598,13 @@ function renderPositionsTable(positions) {
     if (p.liquidationPrice) {
       const dist = p.liqDistancePct !== null ? p.liqDistancePct : 100;
       let distBadge = '';
-      let barColor = 'bg-emerald-400';
 
       if (dist < 10) {
         distBadge = `<span class="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/30 animate-pulse">KRİTİK %${dist.toFixed(1)}</span>`;
-        barColor = 'bg-rose-500';
       } else if (dist < 25) {
         distBadge = `<span class="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">%${dist.toFixed(1)} mesafe</span>`;
-        barColor = 'bg-amber-400';
       } else {
         distBadge = `<span class="text-[10px] text-slate-400">%${dist.toFixed(1)} mesafe</span>`;
-        barColor = 'bg-cyan-400';
       }
 
       liqDisplay = `
@@ -402,11 +617,9 @@ function renderPositionsTable(positions) {
 
     return `
       <tr class="ultra-tr">
-        <!-- Coin -->
+        <!-- Coin with Real SVG Logo -->
         <td class="py-3.5 px-4 font-bold text-white flex items-center gap-2.5 font-sans">
-          <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-[10px] text-cyan-300 font-black border border-white/10 shadow-sm">
-            ${p.coin.slice(0, 3)}
-          </div>
+          ${getCoinBadge(p.coin)}
           <div>
             <a href="https://app.hyperliquid.xyz/trade/${p.coin}" target="_blank" class="hover:text-cyan-400 transition font-extrabold text-sm">
               ${p.coin}
@@ -440,6 +653,10 @@ function renderPositionsTable(positions) {
         <td class="py-3.5 px-3 text-right">
           <div class="font-bold ${pnlColor}">${p.unrealizedPnl >= 0 ? '+' : ''}${formatUsd(p.unrealizedPnl)}</div>
           <div class="text-[10px] font-semibold ${roeColor}">(${p.roePct >= 0 ? '+' : ''}${p.roePct.toFixed(2)}% ROE)</div>
+          <!-- Visual PnL Trail -->
+          <div class="w-full h-1 rounded-full bg-slate-900 mt-1 overflow-hidden flex">
+            <div class="h-full ${p.unrealizedPnl >= 0 ? 'bg-emerald-400' : 'bg-rose-500'}" style="width: ${Math.min(100, Math.max(10, Math.abs(p.roePct)))}%"></div>
+          </div>
         </td>
 
         <!-- Likidasyon -->
@@ -486,7 +703,10 @@ async function loadFills() {
       return `
         <tr class="ultra-tr">
           <td class="py-2.5 px-4 text-slate-400 text-[11px]">${timeStr}</td>
-          <td class="py-2.5 px-3 font-bold text-white font-sans">${f.coin}</td>
+          <td class="py-2.5 px-3 font-bold text-white font-sans flex items-center gap-1.5">
+            ${getCoinBadge(f.coin)}
+            <span>${f.coin}</span>
+          </td>
           <td class="py-2.5 px-3 font-bold text-[11px] ${dirColor}">${f.dir || f.side}</td>
           <td class="py-2.5 px-3 text-right text-white">$${f.px}</td>
           <td class="py-2.5 px-3 text-right text-slate-300">${formatCrypto(f.sz)}</td>
