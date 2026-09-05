@@ -420,31 +420,50 @@ async function loadSettings() {
 
     appSettings = data.settings || {};
 
-    const tokenInput = document.getElementById('settings-bot-token');
-    const chatInput = document.getElementById('settings-default-chatid');
+    const statusBadge = document.getElementById('status-bot-badge');
+    const displayToken = document.getElementById('display-bot-token');
+    const displayChat = document.getElementById('display-default-chatid');
     const pollSelect = document.getElementById('settings-poll-interval');
     const banner = document.getElementById('telegram-warning-banner');
 
-    if (tokenInput && appSettings.telegram_bot_token) tokenInput.value = appSettings.telegram_bot_token;
-    if (chatInput && appSettings.telegram_default_chat_id) chatInput.value = appSettings.telegram_default_chat_id;
-    if (pollSelect && appSettings.poll_interval_seconds) pollSelect.value = appSettings.poll_interval_seconds;
-
-    // Show warning banner if token is empty
-    if (!appSettings.telegram_bot_token || !appSettings.telegram_default_chat_id) {
-      if (banner) banner.classList.remove('hidden');
-    } else {
+    if (appSettings.hasBotToken) {
+      if (statusBadge) {
+        statusBadge.className = 'flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>Railway Aktif</span>';
+      }
+      if (displayToken) {
+        displayToken.textContent = appSettings.botTokenPreview || 'Aktif (••••••••)';
+        displayToken.className = 'text-emerald-400 font-semibold';
+      }
       if (banner) banner.classList.add('hidden');
+    } else {
+      if (statusBadge) {
+        statusBadge.className = 'flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30';
+        statusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>Railway\'de Bekleniyor</span>';
+      }
+      if (displayToken) {
+        displayToken.textContent = 'TELEGRAM_BOT_TOKEN (Eksik)';
+        displayToken.className = 'text-amber-400 font-semibold';
+      }
+      if (banner) banner.classList.remove('hidden');
+    }
+
+    if (displayChat) {
+      displayChat.textContent = appSettings.telegram_default_chat_id || 'TELEGRAM_DEFAULT_CHAT_ID (Eksik)';
+      displayChat.className = appSettings.telegram_default_chat_id ? 'text-cyan-300 font-semibold' : 'text-slate-500 font-semibold';
+    }
+
+    if (pollSelect && appSettings.poll_interval_seconds) {
+      pollSelect.value = appSettings.poll_interval_seconds;
     }
   } catch (err) {
     console.error('loadSettings error:', err);
   }
 }
 
-// Save Settings Form
+// Save Settings Form (Preferences only)
 document.getElementById('form-settings')?.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const token = document.getElementById('settings-bot-token').value.trim();
-  const chatId = document.getElementById('settings-default-chatid').value.trim();
   const poll = document.getElementById('settings-poll-interval').value;
 
   try {
@@ -452,14 +471,12 @@ document.getElementById('form-settings')?.addEventListener('submit', async (e) =
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        telegram_bot_token: token,
-        telegram_default_chat_id: chatId,
         poll_interval_seconds: poll
       })
     });
     const data = await res.json();
     if (data.success) {
-      showToast('Ayarlar başarıyla kaydedildi!', 'success');
+      showToast('Tercihler kaydedildi!', 'success');
       document.getElementById('modal-settings').classList.add('hidden');
       loadSettings();
     } else {
@@ -470,21 +487,19 @@ document.getElementById('form-settings')?.addEventListener('submit', async (e) =
   }
 });
 
-// Test Telegram Button
+// Test Telegram Button (Uses Railway Variables)
 document.getElementById('btn-test-telegram')?.addEventListener('click', async () => {
-  const token = document.getElementById('settings-bot-token').value.trim();
-  const chatId = document.getElementById('settings-default-chatid').value.trim();
   const feedback = document.getElementById('test-telegram-feedback');
 
   feedback.classList.remove('hidden');
   feedback.className = 'text-xs mt-1.5 text-center text-cyan-400';
-  feedback.textContent = 'Telegram bildirimi gönderiliyor...';
+  feedback.textContent = 'Railway değişkenleriyle Telegram bildirimi gönderiliyor...';
 
   try {
     const res = await fetch('/api/settings/test-telegram', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, chatId })
+      body: JSON.stringify({})
     });
     const data = await res.json();
     if (data.success) {

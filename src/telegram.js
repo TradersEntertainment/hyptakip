@@ -23,16 +23,22 @@ function shortAddr(addr) {
 /**
  * Send raw Telegram HTML message
  */
-async function sendTelegramMessage(text, customChatId = null, overrideToken = null) {
+async function sendTelegramMessage(text, customChatId = null) {
   const settings = db.getSettings();
-  const token = overrideToken || settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = customChatId || settings.telegram_default_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID;
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = customChatId || process.env.TELEGRAM_DEFAULT_CHAT_ID;
 
-  if (!token) {
-    return { success: false, reason: 'Telegram Bot Token girilmemiş. Ayarlar menüsünden ekleyebilirsiniz.' };
+  if (!token || !token.trim()) {
+    return { 
+      success: false, 
+      reason: 'TELEGRAM_BOT_TOKEN tanımlı değil. Lütfen Railway Dashboard -> Variables sekmesine TELEGRAM_BOT_TOKEN ekleyin.' 
+    };
   }
-  if (!chatId) {
-    return { success: false, reason: 'Telegram Chat ID girilmemiş. Ayarlar veya cüzdan detayından ekleyebilirsiniz.' };
+  if (!chatId || !chatId.trim()) {
+    return { 
+      success: false, 
+      reason: 'TELEGRAM_DEFAULT_CHAT_ID tanımlı değil. Lütfen Railway Variables veya cüzdana özel Chat ID ekleyin.' 
+    };
   }
 
   // Check if notifications are globally enabled
@@ -70,12 +76,12 @@ async function sendTelegramMessage(text, customChatId = null, overrideToken = nu
 /**
  * Send test alert
  */
-async function sendTestMessage(token = null, chatId = null) {
+async function sendTestMessage(customChatId = null) {
   const testText = `
 🚀 <b>HYPERLIQUID TAKİP SİSTEMİ TEST BİLDİRİMİ</b> 🚀
 
 ✅ <b>Telegram Entegrasyonu Başarılı!</b>
-Bu bildirimi alıyorsanız, bot yapılandırmanız sorunsuz çalışmaktadır.
+Bu bildirimi alıyorsanız, Railway üzerinden eklediğiniz Telegram botu sorunsuz çalışmaktadır.
 
 📊 <b>Sistem Durumu:</b> 🟢 Aktif & Canlı Takipte
 ⏱️ <b>Zaman:</b> ${new Date().toLocaleString('tr-TR')}
@@ -83,7 +89,7 @@ Bu bildirimi alıyorsanız, bot yapılandırmanız sorunsuz çalışmaktadır.
 <i>Artık takip ettiğiniz cüzdanlarda yeni pozisyon açıldığında veya pozisyon boyutu değiştiğinde buradan anlık bildirim alacaksınız!</i>
 `.trim();
 
-  return await sendTelegramMessage(testText, chatId, token);
+  return await sendTelegramMessage(testText, customChatId);
 }
 
 /**
@@ -91,9 +97,9 @@ Bu bildirimi alıyorsanız, bot yapılandırmanız sorunsuz çalışmaktadır.
  */
 async function notifyPositionAlert({ type, wallet, current, previous = null, diffPct = 0 }) {
   const settings = db.getSettings();
-  const hyperdashUrl = `https://hyperdash.com/address/${wallet.address}`;
   const addressShort = shortAddr(wallet.address);
-  const targetChatId = wallet.telegram_chat_id || settings.telegram_default_chat_id;
+  const hyperdashUrl = `https://hyperdash.com/address/${wallet.address}`;
+  const targetChatId = wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID;
 
   let title = '';
   let body = '';

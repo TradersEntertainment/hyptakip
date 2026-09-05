@@ -161,31 +161,59 @@ app.delete('/api/alerts', (req, res) => {
 
 // --- Settings Endpoints ---
 
-// Get settings
+// Get settings (Bot Token is strictly loaded from Railway environment variables)
 app.get('/api/settings', (req, res) => {
   try {
     const settings = db.getSettings();
-    res.json({ success: true, settings });
+    const rawToken = process.env.TELEGRAM_BOT_TOKEN ? process.env.TELEGRAM_BOT_TOKEN.trim() : '';
+    const defaultChatId = process.env.TELEGRAM_DEFAULT_CHAT_ID ? process.env.TELEGRAM_DEFAULT_CHAT_ID.trim() : '';
+    const maskedToken = rawToken ? `${rawToken.slice(0, 6)}••••••••${rawToken.slice(-4)}` : '';
+
+    res.json({
+      success: true,
+      settings: {
+        hasBotToken: Boolean(rawToken),
+        botTokenPreview: maskedToken,
+        telegram_default_chat_id: defaultChatId,
+        poll_interval_seconds: settings.poll_interval_seconds || '5',
+        source: 'railway_env'
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Update settings
+// Update settings (Only non-sensitive preferences like poll interval)
 app.post('/api/settings', (req, res) => {
   try {
-    const updated = db.updateSettings(req.body);
-    res.json({ success: true, settings: updated });
+    const { poll_interval_seconds } = req.body;
+    const toUpdate = {};
+    if (poll_interval_seconds) toUpdate.poll_interval_seconds = String(poll_interval_seconds);
+
+    const updated = db.updateSettings(toUpdate);
+    const rawToken = process.env.TELEGRAM_BOT_TOKEN ? process.env.TELEGRAM_BOT_TOKEN.trim() : '';
+    const defaultChatId = process.env.TELEGRAM_DEFAULT_CHAT_ID ? process.env.TELEGRAM_DEFAULT_CHAT_ID.trim() : '';
+
+    res.json({
+      success: true,
+      settings: {
+        hasBotToken: Boolean(rawToken),
+        botTokenPreview: rawToken ? `${rawToken.slice(0, 6)}••••••••${rawToken.slice(-4)}` : '',
+        telegram_default_chat_id: defaultChatId,
+        poll_interval_seconds: updated.poll_interval_seconds || '5'
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Test Telegram Alert
+// Test Telegram Alert (Uses Railway environment variables)
 app.post('/api/settings/test-telegram', async (req, res) => {
   try {
-    const { token, chatId } = req.body;
-    const result = await telegram.sendTestMessage(token, chatId);
+    const { chatId } = req.body;
+    const result = await telegram.sendTestMessage(chatId);
     if (result.success) {
       res.json({ success: true, message: 'Test bildirimi Telegram grubunuza başarıyla gönderildi!' });
     } else {

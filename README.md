@@ -53,14 +53,19 @@ Tarayıcınızda açın: **`http://localhost:3000`**
 
 ---
 
-## 🤖 Telegram Bot Kurulumu (Adım Adım)
+## 🤖 Telegram Bot Kurulumu (Railway Variables Üzerinden)
+
+Bot token ve varsayılan bildirim kanalı **web sitesinden değil, doğrudan Railway Variables** üzerinden güvenli bir şekilde eklenir:
 
 1. Telegram'da **`@BotFather`** botunu açın ve `/newbot` komutu verin.
 2. Botunuz için bir isim ve kullanıcı adı belirleyin. Size verilen **API Token**'ı kopyalayın.
 3. Bildirimleri almak istediğiniz bir Telegram grubu açın veya botu özel sohbete ekleyin.
 4. Botu gruba ekleyip yönetici (admin) yapın.
-5. Grubun Chat ID'sini öğrenmek için bota bir mesaj atıp `https://api.telegram.org/bot<TOKEN>/getUpdates` linkini açın veya `@userinfobot` / `@RawDataBot` kullanın (Grup ID'leri genellikle `-100...` ile başlar).
-6. Sitede sağ üstteki **"Ayarlar"** butonuna tıklayın, Token ve Chat ID'nizi yapıştırıp **"Test Bildirimi Gönder"** butonuna basın!
+5. Grubun Chat ID'sini öğrenin (Grup ID'leri genellikle `-100...` ile başlar).
+6. **Railway Dashboard**'da projenize gidin -> **Variables** sekmesini açın ve şu iki değişkeni ekleyin:
+   - `TELEGRAM_BOT_TOKEN`: `@BotFather`'dan aldığınız token
+   - `TELEGRAM_DEFAULT_CHAT_ID`: Grubunuzun veya sohbetinizin ID'si
+7. Sitedeki **"Ayarlar"** penceresini açıp **"Railway Telegram Bağlantısını Test Et"** butonuna basarak entegrasyonu anında doğrulayabilirsiniz!
 
 ---
 
