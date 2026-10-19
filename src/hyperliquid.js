@@ -40,33 +40,72 @@ async function getAllMids() {
   }
 }
 
+// HIP-3 dex list (xyz = stocks, para, ...). Each dex has its OWN clearinghouse: a plain
+// clearinghouseState call only returns main-dex (crypto) positions, so stock perps such as
+// xyz:CBRS were invisible. Cached for 1 hour.
+const DEX_TTL_MS = 60 * 60 * 1000;
+let dexCache = { names: null, at: 0 };
+
+async function getPerpDexNames() {
+  if (dexCache.names && Date.now() - dexCache.at < DEX_TTL_MS) return dexCache.names;
+  try {
+    const raw = await postHyperliquid({ type: 'perpDexs' });
+    const names = (Array.isArray(raw) ? raw : [])
+      .filter(d => d && typeof d.name === 'string' && d.name)
+      .map(d => d.name);
+    dexCache = { names, at: Date.now() };
+    return names;
+  } catch (err) {
+    console.error('[Hyperliquid] perpDexs hatası:', err.message);
+    return dexCache.names || [];
+  }
+}
+
 /**
- * Fetch and normalize clearinghouse state for an address
+ * Fetch and normalize clearinghouse state for an address, across the main dex AND every HIP-3 dex.
+ * Main dex failure throws (as before); a failing HIP-3 dex is skipped and listed in `failedDexes`
+ * so the tracker does not report its positions as closed.
  */
 async function getClearinghouseState(userAddress) {
   if (!userAddress || !userAddress.startsWith('0x')) {
     throw new Error('Geçersiz cüzdan adresi');
   }
+  const user = userAddress.toLowerCase();
+  const dexes = await getPerpDexNames();
 
-  const raw = await postHyperliquid({
-    type: 'clearinghouseState',
-    user: userAddress.toLowerCase()
-  });
+  const [main, ...others] = await Promise.allSettled([
+    postHyperliquid({ type: 'clearinghouseState', user }),
+    ...dexes.map(dex => postHyperliquid({ type: 'clearinghouseState', user, dex }))
+  ]);
 
-  if (!raw) {
+  if (main.status !== 'fulfilled') throw main.reason;
+  if (!main.value) {
     throw new Error('Hyperliquid boş yanıt döndürdü');
   }
 
-  const marginSummary = raw.marginSummary || {};
-  const crossMarginSummary = raw.crossMarginSummary || {};
+  const failedDexes = [];
+  const raws = [{ dex: '', raw: main.value }];
+  others.forEach((r, i) => {
+    if (r.status === 'fulfilled' && r.value) raws.push({ dex: dexes[i], raw: r.value });
+    else {
+      failedDexes.push(dexes[i]);
+      console.error(`[Hyperliquid] clearinghouseState (${dexes[i]}) hatası (${user}):`, r.reason ? r.reason.message : 'boş yanıt');
+    }
+  });
 
-  const accountValue = parseFloat(marginSummary.accountValue || crossMarginSummary.accountValue || 0);
-  const totalNtlPos = parseFloat(marginSummary.totalNtlPos || crossMarginSummary.totalNtlPos || 0);
-  const totalMarginUsed = parseFloat(marginSummary.totalMarginUsed || crossMarginSummary.totalMarginUsed || 0);
-  const withdrawable = parseFloat(raw.withdrawable || 0);
+  let accountValue = 0, totalNtlPos = 0, totalMarginUsed = 0, withdrawable = 0;
+  const rawPositions = [];
+  for (const { raw } of raws) {
+    const marginSummary = raw.marginSummary || {};
+    const crossMarginSummary = raw.crossMarginSummary || {};
+    accountValue += parseFloat(marginSummary.accountValue || crossMarginSummary.accountValue || 0);
+    totalNtlPos += parseFloat(marginSummary.totalNtlPos || crossMarginSummary.totalNtlPos || 0);
+    totalMarginUsed += parseFloat(marginSummary.totalMarginUsed || crossMarginSummary.totalMarginUsed || 0);
+    withdrawable += parseFloat(raw.withdrawable || 0);
+    rawPositions.push(...(raw.assetPositions || []));
+  }
 
   // Normalize positions
-  const rawPositions = raw.assetPositions || [];
   const positions = [];
 
   let totalUnrealizedPnl = 0;
@@ -143,6 +182,8 @@ async function getClearinghouseState(userAddress) {
     totalUnrealizedPnl,
     positions,
     positionCount: positions.length,
+    allDexes: true,
+    failedDexes,
     updatedAt: new Date().toISOString()
   };
 }
@@ -186,5 +227,6 @@ module.exports = {
   postHyperliquid,
   getAllMids,
   getClearinghouseState,
+  getPerpDexNames,
   getUserFills
 };

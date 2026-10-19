@@ -23,8 +23,10 @@ async function processWalletState(wallet, currentState) {
   // Update in-memory cache
   cachedLatestData[wallet.address.toLowerCase()] = currentState;
 
-  // If no previous state recorded (first tracking cycle), initialize without flooding alerts
-  if (!previousState || !previousState.positions) {
+  // If no previous state recorded (first tracking cycle), initialize without flooding alerts.
+  // States saved before multi-dex support (no allDexes flag) never saw HIP-3 positions (xyz stocks):
+  // re-baseline once instead of announcing every existing stock position as "new".
+  if (!previousState || !previousState.positions || !previousState.allDexes) {
     db.updateWalletLastState(wallet.address, currentState);
     console.log(`[Tracker] İlk durum kaydedildi: ${wallet.label} (${wallet.address}) - ${currentState.positions.length} aktif pozisyon`);
     return;
@@ -32,6 +34,15 @@ async function processWalletState(wallet, currentState) {
 
   const prevPositions = previousState.positions || [];
   const currPositions = currentState.positions || [];
+
+  // A HIP-3 dex that failed to load this cycle: keep its previous positions instead of reporting them closed.
+  const failed = new Set(currentState.failedDexes || []);
+  if (failed.size) {
+    for (const p of prevPositions) {
+      const dex = String(p.coin || '').includes(':') ? String(p.coin).split(':')[0] : '';
+      if (dex && failed.has(dex) && !currPositions.some(c => c.coin === p.coin)) currPositions.push(p);
+    }
+  }
 
   const prevMap = new Map();
   for (const p of prevPositions) {
