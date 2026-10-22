@@ -27,27 +27,35 @@ function shortAddr(addr) {
 function shortUsd(val) {
   const n = Math.abs(parseFloat(val));
   if (isNaN(n)) return '$?';
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (n >= 999.995e6) return `$${(n / 1e9).toFixed(2)}B`;   // eşikler yuvarlamadan sonra: $999,999 → $1.00M (not $1000K)
+  if (n >= 999.5e3) return `$${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e4) return `$${Math.round(n / 1e3)}K`;
   return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
 /**
- * Coin name for the headline: "xyz:CRWD" -> "CRWD" (the full name stays in the Parite line)
+ * Escape text for Telegram HTML (wallet labels are free text: "A<B fund" would break parse_mode HTML)
+ */
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Coin name for the headline: full name, dex prefix kept ("xyz:CRWD") so the same ticker on two HIP-3 dexes
+ * never reads the same
  */
 function shortCoin(coin) {
-  const c = String(coin || '');
-  return c.includes(':') ? c.split(':').pop() : c;
+  return esc(coin);
 }
 
 /**
  * First line of every alert. The phone lock-screen / notification preview shows only this line,
  * so it carries everything: what happened, side, coin, size, who.
- * e.g. "🟢 LONG CRWD büyüttü +%12.2 → $1.21M · injbalina"
+ * e.g. "🟢 LONG xyz:CRWD büyüttü +%12.2 → $1.21M · injbalina". "kapandı", not "kapattı": the tracker only sees
+ * the position is gone (it may have been liquidated).
  */
 function headline({ type, wallet, current, previous, diffPct = 0 }) {
-  const who = wallet.label || shortAddr(wallet.address);
+  const who = esc(wallet.label || shortAddr(wallet.address));
   const sideEmoji = side => (side === 'LONG' ? '🟢' : '🔴');
   if (type === 'NEW_POSITION') {
     return `${sideEmoji(current.side)} ${current.side} ${shortCoin(current.coin)} açtı ${shortUsd(current.positionValue)} · ${who}`;
@@ -60,7 +68,7 @@ function headline({ type, wallet, current, previous, diffPct = 0 }) {
     return `${sideEmoji(current.side)} ${current.side} ${shortCoin(current.coin)} ${up ? 'büyüttü +' : 'küçülttü −'}%${diffPct.toFixed(1)} → ${shortUsd(current.positionValue)} · ${who}`;
   }
   if (type === 'CLOSED_POSITION') {
-    return `🏁 ${previous.side} ${shortCoin(previous.coin)} kapattı (${shortUsd(previous.positionValue)}) · ${who}`;
+    return `🏁 ${previous.side} ${shortCoin(previous.coin)} kapandı (${shortUsd(previous.positionValue)}) · ${who}`;
   }
   if (type === 'LIQUIDATION_RISK') {
     return `🔥 ${current.side} ${shortCoin(current.coin)} liq'e %${current.liqDistancePct.toFixed(1)} · ${shortUsd(current.positionValue)} · ${who}`;
@@ -167,7 +175,7 @@ async function notifyPositionAlert({ type, wallet, current, previous = null, dif
     body = `
 ${title}
 
-👤 <b>Balina:</b> ${wallet.label} (<code>${addressShort}</code>)
+👤 <b>Balina:</b> ${esc(wallet.label)} (<code>${addressShort}</code>)
 🪙 <b>Parite:</b> ${sideEmoji} <b>${current.side} ${current.coin}</b>
 📊 <b>Pozisyon Değeri:</b> ${formatUsd(current.positionValue)} (${current.size.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${current.coin})
 🎯 <b>Giriş Fiyatı:</b> $${current.entryPrice}
@@ -191,7 +199,7 @@ ${current.liquidationPrice ? `⚠️ <b>Likidasyon Fiyatı:</b> $${current.liqui
     body = `
 ${title}
 
-👤 <b>Balina:</b> ${wallet.label} (<code>${addressShort}</code>)
+👤 <b>Balina:</b> ${esc(wallet.label)} (<code>${addressShort}</code>)
 🪙 <b>Parite:</b> ${sideEmoji} <b>${current.side} ${current.coin}</b>
 ⚡ <b>Hareket:</b> ${actionText}
 📦 <b>Önceki Boyut:</b> ${previous.size.toLocaleString('en-US', { maximumFractionDigits: 4 })} (${formatUsd(previous.positionValue)})
@@ -210,7 +218,7 @@ ${title}
     body = `
 ${title}
 
-👤 <b>Balina:</b> ${wallet.label} (<code>${addressShort}</code>)
+👤 <b>Balina:</b> ${esc(wallet.label)} (<code>${addressShort}</code>)
 🪙 <b>Kapanan Parite:</b> ${prevSideEmoji} <b>${previous.side} ${previous.coin}</b>
 📦 <b>Kapanan Boyut:</b> ${previous.size.toLocaleString('en-US', { maximumFractionDigits: 4 })} (${formatUsd(previous.positionValue)})
 🎯 <b>Giriş Fiyatı:</b> $${previous.entryPrice}
@@ -224,7 +232,7 @@ ${title}
     body = `
 ${title}
 
-👤 <b>Balina:</b> ${wallet.label} (<code>${addressShort}</code>)
+👤 <b>Balina:</b> ${esc(wallet.label)} (<code>${addressShort}</code>)
 🪙 <b>Parite:</b> <b>${current.side} ${current.coin}</b>
 ⚠️ <b>Likidasyona Mesafe:</b> Sadece <b>%${current.liqDistancePct.toFixed(1)}</b> kaldı!
 🎯 <b>Likidasyon Fiyatı:</b> $${current.liquidationPrice} | <b>Güncel:</b> $${current.currentPrice.toFixed(4)}
