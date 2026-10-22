@@ -65,7 +65,7 @@ app.post('/api/wallets', async (req, res) => {
       address: address.trim(),
       label: label?.trim(),
       telegram_chat_id: telegram_chat_id?.trim(),
-      threshold_pct: parseFloat(threshold_pct) || 10.0,
+      threshold_pct: db.parsePct(threshold_pct),
       is_active: is_active !== undefined ? is_active : 1
     });
 
@@ -89,7 +89,7 @@ app.put('/api/wallets/:address', (req, res) => {
     const fields = {};
     if (label !== undefined) fields.label = label.trim();
     if (telegram_chat_id !== undefined) fields.telegram_chat_id = telegram_chat_id ? telegram_chat_id.trim() : null;
-    if (threshold_pct !== undefined) fields.threshold_pct = parseFloat(threshold_pct) || 10.0;
+    if (threshold_pct !== undefined) fields.threshold_pct = db.parsePct(threshold_pct);
     if (is_active !== undefined) fields.is_active = is_active ? 1 : 0;
 
     const updated = db.updateWallet(address, fields);

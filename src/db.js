@@ -102,12 +102,22 @@ function getWallet(address) {
   return database.prepare('SELECT * FROM wallets WHERE LOWER(address) = LOWER(?)').get(address);
 }
 
+/**
+ * Threshold % from user input. Accepts Turkish decimal comma ("0,01"), which parseFloat read as 0 and silently
+ * turned into the 10% default. 0 means "every change" and is stored as the 0.01 floor (the tracker never alerts on
+ * an unchanged size). Above 100 or unreadable falls back to `def`.
+ */
+function parsePct(v, def = 10.0) {
+  const n = parseFloat(String(v ?? '').trim().replace(',', '.'));
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? Math.max(n, 0.01) : def;
+}
+
 function upsertWallet({ address, label, telegram_chat_id = null, threshold_pct = 10.0, is_active = 1 }) {
   const database = getDb();
   const cleanAddress = address.trim().toLowerCase();
   const cleanLabel = (label && label.trim()) || `Balina (${cleanAddress.slice(0, 6)}...${cleanAddress.slice(-4)})`;
   const cleanChatId = telegram_chat_id ? telegram_chat_id.trim() : null;
-  const threshold = parseFloat(threshold_pct) || 10.0;
+  const threshold = parsePct(threshold_pct);
 
   const existing = getWallet(cleanAddress);
   if (existing) {
@@ -233,6 +243,7 @@ module.exports = {
   getActiveWallets,
   getWallet,
   upsertWallet,
+  parsePct,
   updateWallet,
   updateWalletLastState,
   deleteWallet,

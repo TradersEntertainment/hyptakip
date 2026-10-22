@@ -54,7 +54,7 @@ async function processWalletState(wallet, currentState) {
     currMap.set(p.coin, p);
   }
 
-  const threshold = parseFloat(wallet.threshold_pct) || 10.0;
+  const threshold = db.parsePct(wallet.threshold_pct);
 
   // 1. Check for NEW POSITIONS and SIZE CHANGES
   for (const curr of currPositions) {
@@ -85,7 +85,7 @@ async function processWalletState(wallet, currentState) {
         const currSz = curr.size || 0;
         if (prevSz > 0) {
           const diffPct = Math.abs((currSz - prevSz) / prevSz) * 100;
-          if (diffPct >= threshold) {
+          if (diffPct > 0 && diffPct >= threshold) {
             console.log(`[Tracker] POZİSYON BOYUT DEĞİŞİMİ TESPİT EDİLDİ: ${wallet.label} -> ${curr.coin} %${diffPct.toFixed(2)} (Eşik: %${threshold})`);
             await telegram.notifyPositionAlert({
               type: 'SIZE_CHANGE',

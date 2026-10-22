@@ -1275,7 +1275,8 @@ document.getElementById('btn-edit-selected-whale')?.addEventListener('click', as
   const newLabel = prompt('Yeni Balina Adı / Lakabı:', selectedWallet.label);
   if (newLabel === null) return;
 
-  const newThreshold = prompt('Yeni Boyut Değişimi Uyarı Eşiği (%) [Örn: 10]:', selectedWallet.threshold_pct || 10);
+  const newThreshold = prompt('Yeni Boyut Değişimi Uyarı Eşiği (%) [Örn: 10 · her işlem için 0.01 · en az 0.01]:',
+    selectedWallet.threshold_pct || 10);
   if (newThreshold === null) return;
 
   const newChatId = prompt('Özel Telegram Chat ID (Boş bırakılırsa genel kullanılır):', selectedWallet.telegram_chat_id || '');
@@ -1287,13 +1288,13 @@ document.getElementById('btn-edit-selected-whale')?.addEventListener('click', as
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         label: newLabel.trim(),
-        threshold_pct: parseFloat(newThreshold) || 10.0,
+        threshold_pct: String(newThreshold).trim(),   // sunucu çözer: "0,01" de kabul (parsePct)
         telegram_chat_id: newChatId.trim() || null
       })
     });
     const data = await res.json();
     if (data.success) {
-      showToast('Cüzdan ayarları güncellendi!', 'success');
+      showToast(`Cüzdan ayarları güncellendi! Eşik: %${data.wallet?.threshold_pct}`, 'success');
       await loadWallets();
     }
   } catch (err) {
