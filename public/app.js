@@ -1268,39 +1268,53 @@ document.getElementById('btn-delete-selected-whale')?.addEventListener('click', 
   }
 });
 
-// Edit Selected Whale
-document.getElementById('btn-edit-selected-whale')?.addEventListener('click', async () => {
-  if (!selectedWallet) return;
+// Edit Selected Whale — tek pencere (eski hali üç ayrı tarayıcı prompt() kutusuydu)
+const editModal = document.getElementById('modal-edit-wallet');
+function closeEditModal() { editModal?.classList.add('hidden'); }
+document.getElementById('btn-edit-selected-whale')?.addEventListener('click', () => {
+  if (!selectedWallet || !editModal) return;
   playClickSound();
-  const newLabel = prompt('Yeni Balina Adı / Lakabı:', selectedWallet.label);
-  if (newLabel === null) return;
-
-  const newThreshold = prompt('Yeni Boyut Değişimi Uyarı Eşiği (%) [Örn: 10 · her işlem için 0.01 · en az 0.01]:',
-    selectedWallet.threshold_pct || 10);
-  if (newThreshold === null) return;
-
-  const newChatId = prompt('Özel Telegram Chat ID (Boş bırakılırsa genel kullanılır):', selectedWallet.telegram_chat_id || '');
-  if (newChatId === null) return;
-
+  document.getElementById('edit-wallet-address').textContent = selectedWallet.address;
+  document.getElementById('input-edit-label').value = selectedWallet.label || '';
+  document.getElementById('input-edit-threshold').value = selectedWallet.threshold_pct ?? 10;
+  document.getElementById('input-edit-chatid').value = selectedWallet.telegram_chat_id || '';
+  editModal.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+  document.getElementById('input-edit-threshold').focus();
+});
+editModal?.querySelectorAll('[data-close-edit]').forEach(b => b.addEventListener('click', closeEditModal));
+editModal?.addEventListener('click', e => { if (e.target === editModal) closeEditModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEditModal(); });
+editModal?.querySelectorAll('[data-thr]').forEach(b => b.addEventListener('click', () => {
+  document.getElementById('input-edit-threshold').value = b.dataset.thr;
+}));
+document.getElementById('form-edit-wallet')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!selectedWallet) return;
+  const btn = document.getElementById('btn-submit-edit');
+  btn.disabled = true;
   try {
     const res = await fetch(`/api/wallets/${selectedWallet.address}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        label: newLabel.trim(),
-        threshold_pct: String(newThreshold).trim(),   // sunucu çözer: "0,01" de kabul (parsePct)
-        telegram_chat_id: newChatId.trim() || null
+        label: document.getElementById('input-edit-label').value.trim(),
+        threshold_pct: document.getElementById('input-edit-threshold').value.trim(),  // sunucu çözer (parsePct)
+        telegram_chat_id: document.getElementById('input-edit-chatid').value.trim() || null
       })
     });
     const data = await res.json();
     if (data.success && data.wallet) {
       showToast(`Cüzdan ayarları güncellendi! Eşik: %${data.wallet.threshold_pct}`, 'success');
+      closeEditModal();
     } else {
       showToast('Hata: ' + (data.error || 'Cüzdan bulunamadı'), 'error');
     }
     await loadWallets();
   } catch (err) {
     showToast('Hata: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
   }
 });
 

@@ -489,6 +489,45 @@
 
   <!-- ================= MODALS ================= -->
 
+  <!-- MODAL: BALİNA DÜZENLE (tarayıcı prompt() zinciri yerine tek pencere) -->
+  <div id="modal-edit-wallet" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden">
+    <div class="w-full max-w-sm bg-[#0a0e1a] border border-cyan-500/20 rounded-2xl p-6 shadow-2xl relative modal-animate-in space-y-5">
+      <button type="button" data-close-edit class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div>
+        <h2 class="text-xl font-bold glow-cyan-text text-left tracking-tight">Balinayı Düzenle</h2>
+        <p id="edit-wallet-address" class="text-[10px] text-slate-500 font-mono mt-1 break-all"></p>
+      </div>
+      <form id="form-edit-wallet" class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="block text-xs font-semibold text-slate-300" for="input-edit-label">Balina Adı / Lakabı</label>
+          <input type="text" id="input-edit-label" class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-400 transition">
+        </div>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-semibold text-slate-300" for="input-edit-threshold">Pozisyon Değişim Eşiği (%)</label>
+          <input type="text" inputmode="decimal" id="input-edit-threshold" placeholder="Örn: 10 · her işlem için 0.01" class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-400 transition font-mono">
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" data-thr="0.01" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 transition cursor-pointer">Her işlem (%0.01)</button>
+            <button type="button" data-thr="1" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%1</button>
+            <button type="button" data-thr="5" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%5</button>
+            <button type="button" data-thr="10" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%10</button>
+            <button type="button" data-thr="25" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%25</button>
+          </div>
+          <p class="text-[10px] text-slate-500">Pozisyon boyutu en az bu oranda değişince bildirim gelir. 0.01 = her değişim; boyut değişmezse bildirim gelmez.</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-semibold text-slate-300" for="input-edit-chatid">Telegram Chat ID (İsteğe Bağlı)</label>
+          <input type="text" id="input-edit-chatid" placeholder="Boş = genel Chat ID" class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-400 transition font-mono">
+        </div>
+        <div class="flex gap-2">
+          <button type="button" data-close-edit class="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 text-sm font-bold transition cursor-pointer">Vazgeç</button>
+          <button type="submit" id="btn-submit-edit" class="flex-1 py-3 rounded-xl btn-ultra-cyan text-sm font-black transition cursor-pointer">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: YENİ BALİNA EKLE (Matches the user's screenshot with ultra styling) -->
   <div id="modal-add-wallet" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md hidden">
     <div class="w-full max-w-sm bg-[#0a0e1a] border border-cyan-500/20 rounded-2xl p-6 shadow-2xl relative modal-animate-in space-y-5">
