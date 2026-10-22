@@ -22,6 +22,13 @@ function shortAddr(addr) {
 }
 
 /**
+ * Size change % for alerts: two decimals under 1% (a 0.01% threshold would otherwise print "%0.0")
+ */
+function fmtDiff(d) {
+  return d < 1 ? d.toFixed(2) : d.toFixed(1);
+}
+
+/**
  * Compact USD for the headline: $1.21M / $850K / $9,500
  */
 function shortUsd(val) {
@@ -65,7 +72,7 @@ function headline({ type, wallet, current, previous, diffPct = 0 }) {
   }
   if (type === 'SIZE_CHANGE') {
     const up = current.size > previous.size;
-    return `${sideEmoji(current.side)} ${current.side} ${shortCoin(current.coin)} ${up ? 'büyüttü +' : 'küçülttü −'}%${diffPct.toFixed(1)} → ${shortUsd(current.positionValue)} · ${who}`;
+    return `${sideEmoji(current.side)} ${current.side} ${shortCoin(current.coin)} ${up ? 'büyüttü +' : 'küçülttü −'}%${fmtDiff(diffPct)} → ${shortUsd(current.positionValue)} · ${who}`;
   }
   if (type === 'CLOSED_POSITION') {
     return `🏁 ${previous.side} ${shortCoin(previous.coin)} kapandı (${shortUsd(previous.positionValue)}) · ${who}`;
@@ -192,7 +199,7 @@ ${current.liquidationPrice ? `⚠️ <b>Likidasyon Fiyatı:</b> $${current.liqui
     const isIncrease = current.size > previous.size;
     const actionText = type === 'FLIP'
       ? `🔄 Yön çevrildi (${previous.side} → ${current.side})`
-      : (isIncrease ? `📈 Pozisyon Büyütüldü (+%${diffPct.toFixed(1)})` : `📉 Pozisyon Küçültüldü / Kâr Alındı (-%${diffPct.toFixed(1)})`);
+      : (isIncrease ? `📈 Pozisyon Büyütüldü (+%${fmtDiff(diffPct)})` : `📉 Pozisyon Küçültüldü / Kâr Alındı (-%${fmtDiff(diffPct)})`);
     const pnlEmoji = current.unrealizedPnl >= 0 ? '🟢 +' : '🔴 ';
 
     title = head;

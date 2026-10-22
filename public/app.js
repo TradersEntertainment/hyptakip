@@ -1293,10 +1293,12 @@ document.getElementById('btn-edit-selected-whale')?.addEventListener('click', as
       })
     });
     const data = await res.json();
-    if (data.success) {
-      showToast(`Cüzdan ayarları güncellendi! Eşik: %${data.wallet?.threshold_pct}`, 'success');
-      await loadWallets();
+    if (data.success && data.wallet) {
+      showToast(`Cüzdan ayarları güncellendi! Eşik: %${data.wallet.threshold_pct}`, 'success');
+    } else {
+      showToast('Hata: ' + (data.error || 'Cüzdan bulunamadı'), 'error');
     }
+    await loadWallets();
   } catch (err) {
     showToast('Hata: ' + err.message, 'error');
   }

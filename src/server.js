@@ -93,6 +93,7 @@ app.put('/api/wallets/:address', (req, res) => {
     if (is_active !== undefined) fields.is_active = is_active ? 1 : 0;
 
     const updated = db.updateWallet(address, fields);
+    if (!updated) return res.status(404).json({ success: false, error: 'Cüzdan bulunamadı' });
     res.json({ success: true, wallet: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
