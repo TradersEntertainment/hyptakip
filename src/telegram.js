@@ -22,6 +22,53 @@ function shortAddr(addr) {
 }
 
 /**
+ * Compact USD for the headline: $1.21M / $850K / $9,500
+ */
+function shortUsd(val) {
+  const n = Math.abs(parseFloat(val));
+  if (isNaN(n)) return '$?';
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e4) return `$${Math.round(n / 1e3)}K`;
+  return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+/**
+ * Coin name for the headline: "xyz:CRWD" -> "CRWD" (the full name stays in the Parite line)
+ */
+function shortCoin(coin) {
+  const c = String(coin || '');
+  return c.includes(':') ? c.split(':').pop() : c;
+}
+
+/**
+ * First line of every alert. The phone lock-screen / notification preview shows only this line,
+ * so it carries everything: what happened, side, coin, size, who.
+ * e.g. "🟢 LONG CRWD büyüttü +%12.2 → $1.21M · injbalina"
+ */
+function headline({ type, wallet, current, previous, diffPct = 0 }) {
+  const who = wallet.label || shortAddr(wallet.address);
+  const sideEmoji = side => (side === 'LONG' ? '🟢' : '🔴');
+  if (type === 'NEW_POSITION') {
+    return `${sideEmoji(current.side)} ${current.side} ${shortCoin(current.coin)} açtı ${shortUsd(current.positionValue)} · ${who}`;
+  }
+  if (type === 'FLIP') {
+    return `🔄 ${shortCoin(current.coin)} ${previous.side} → ${current.side} çevirdi ${shortUsd(current.positionValue)} · ${who}`;
+  }
+  if (type === 'SIZE_CHANGE') {
+    const up = current.size > previous.size;
+    return `${sideEmoji(current.side)} ${current.side} ${shortCoin(current.coin)} ${up ? 'büyüttü +' : 'küçülttü −'}%${diffPct.toFixed(1)} → ${shortUsd(current.positionValue)} · ${who}`;
+  }
+  if (type === 'CLOSED_POSITION') {
+    return `🏁 ${previous.side} ${shortCoin(previous.coin)} kapattı (${shortUsd(previous.positionValue)}) · ${who}`;
+  }
+  if (type === 'LIQUIDATION_RISK') {
+    return `🔥 ${current.side} ${shortCoin(current.coin)} liq'e %${current.liqDistancePct.toFixed(1)} · ${shortUsd(current.positionValue)} · ${who}`;
+  }
+  return `${who}`;
+}
+
+/**
  * Send raw Telegram HTML message
  */
 async function sendTelegramMessage(text, customChatId = null) {
@@ -108,9 +155,15 @@ async function notifyPositionAlert({ type, wallet, current, previous = null, dif
   let alertType = type;
   let coinName = current ? current.coin : (previous ? previous.coin : 'HL');
 
+  // Long -> Short (or back) arrives from the tracker as SIZE_CHANGE with diffPct 100; it is a flip, not a resize
+  if (type === 'SIZE_CHANGE' && previous && current && previous.side !== current.side) {
+    type = 'FLIP';
+  }
+  const head = `<b>${headline({ type, wallet, current, previous, diffPct })}</b>`;
+
   if (type === 'NEW_POSITION') {
     const sideEmoji = current.side === 'LONG' ? '🟢' : '🔴';
-    title = `🚨 <b>YENİ POZİSYON AÇILDI!</b> 🚨`;
+    title = head;
     body = `
 ${title}
 
@@ -126,13 +179,15 @@ ${current.liquidationPrice ? `⚠️ <b>Likidasyon Fiyatı:</b> $${current.liqui
 🔗 <a href="${hypurrscanUrl}"><b>Hypurrscan'de İncele</b></a> | <a href="${hyperdashUrl}">Hyperdash</a> | <a href="https://app.hyperliquid.xyz/trade/${current.coin}">Trade</a>
     `.trim();
 
-  } else if (type === 'SIZE_CHANGE') {
+  } else if (type === 'SIZE_CHANGE' || type === 'FLIP') {
     const sideEmoji = current.side === 'LONG' ? '🟢' : '🔴';
     const isIncrease = current.size > previous.size;
-    const actionText = isIncrease ? `📈 Pozisyon Büyütüldü (+%${diffPct.toFixed(1)})` : `📉 Pozisyon Küçültüldü / Kâr Alındı (-%${diffPct.toFixed(1)})`;
+    const actionText = type === 'FLIP'
+      ? `🔄 Yön çevrildi (${previous.side} → ${current.side})`
+      : (isIncrease ? `📈 Pozisyon Büyütüldü (+%${diffPct.toFixed(1)})` : `📉 Pozisyon Küçültüldü / Kâr Alındı (-%${diffPct.toFixed(1)})`);
     const pnlEmoji = current.unrealizedPnl >= 0 ? '🟢 +' : '🔴 ';
 
-    title = `📊 <b>POZİSYON BOYUTU DEĞİŞTİ (%${diffPct.toFixed(1)})</b>`;
+    title = head;
     body = `
 ${title}
 
@@ -151,7 +206,7 @@ ${title}
 
   } else if (type === 'CLOSED_POSITION') {
     const prevSideEmoji = previous.side === 'LONG' ? '🟢' : '🔴';
-    title = `🏁 <b>POZİSYON TAMAMEN KAPATILDI</b>`;
+    title = head;
     body = `
 ${title}
 
@@ -165,7 +220,7 @@ ${title}
     `.trim();
 
   } else if (type === 'LIQUIDATION_RISK') {
-    title = `🔥 <b>LİKİDASYON RİSKİ UYARISI!</b> 🔥`;
+    title = head;
     body = `
 ${title}
 
@@ -203,6 +258,8 @@ module.exports = {
   sendTelegramMessage,
   sendTestMessage,
   notifyPositionAlert,
+  headline,
+  shortUsd,
   formatUsd,
   shortAddr
 };
