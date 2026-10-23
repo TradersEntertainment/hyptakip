@@ -4,7 +4,8 @@ let selectedWallet = null;
 let currentTab = 'positions';
 let autoRefreshTimer = null;
 let appSettings = {};
-let soundEnabled = localStorage.getItem('sound_enabled') !== 'false';
+let soundEnabled = true;
+try { soundEnabled = localStorage.getItem('sound_enabled') !== 'false'; } catch (e) { /* storage blocked */ }
 
 // Chart.js instances
 let allocationChart = null;
@@ -351,7 +352,7 @@ function renderCharts(positions) {
     data: {
       labels: positions.map(p => p.coin),
       datasets: [{
-        label: 'Kâr / Zarar ($)',
+        label: T('Kâr / Zarar ($)'),
         data: positions.map(p => p.unrealizedPnl),
         backgroundColor: positions.map(p => p.unrealizedPnl >= 0 ? 'rgba(16, 185, 129, 0.85)' : 'rgba(244, 63, 94, 0.85)'),
         borderColor: positions.map(p => p.unrealizedPnl >= 0 ? '#10b981' : '#f43f5e'),
@@ -480,7 +481,7 @@ function renderWalletsList() {
         <div class="flex items-center justify-between mb-1.5">
           <div class="font-bold text-xs text-white truncate max-w-[160px] flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full ${w.is_active ? 'bg-cyan-400 shadow-sm shadow-cyan-400' : 'bg-slate-600'}"></span>
-            <span>${w.label}</span>
+            <span data-no-i18n>${w.label}</span>
           </div>
           <div class="flex items-center gap-1.5">
             ${Number(w.track_orders) === 1 ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-semibold" title="Emir bildirimi açık">📝</span>' : ''}
@@ -559,6 +560,10 @@ async function selectWallet(wallet, fetchFills = true) {
   if (fetchFills) { loadPnlHistory(); loadCoinPnl(); }
 }
 
+// 🐋 Whale card (whalecard.js) reads these
+window.selectedWalletForCard = () => selectedWallet;
+window.currentPnlPeriodForCard = () => pnlHistPeriod;
+
 // 📈 PnL history (HL portfolio): 24 Saat / 7 Gün / 30 Gün / Tümü
 let pnlHistChart = null;
 let pnlHistPeriod = 'week';
@@ -619,9 +624,9 @@ function renderPnlHistory() {
     data: {
       labels: p.pnl.map(r => fmtT(r[0])),
       datasets: [
-        { label: 'Kâr/Zarar', data: p.pnl.map(r => r[1]), borderColor: color, backgroundColor: grad, fill: true,
+        { label: T('Kâr/Zarar'), data: p.pnl.map(r => r[1]), borderColor: color, backgroundColor: grad, fill: true,
           borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, yAxisID: 'y' },
-        { label: 'Hesap değeri', data: p.pnl.map(r => avAt.get(r[0]) ?? null), borderColor: 'rgba(148,163,184,0.6)',
+        { label: T('Hesap değeri'), data: p.pnl.map(r => avAt.get(r[0]) ?? null), borderColor: 'rgba(148,163,184,0.6)',
           borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y2', spanGaps: true }
       ]
     },
@@ -1242,11 +1247,11 @@ async function loadAlerts() {
             <div class="flex items-center gap-2">
               <span class="text-base">${typeIcons[a.alert_type] || '🔔'}</span>
               <span class="font-extrabold text-xs text-cyan-400 tracking-wide">${typeLabels[a.alert_type] || a.alert_type}</span>
-              <span class="text-xs text-slate-400 font-semibold">• ${a.wallet_label}</span>
+              <span class="text-xs text-slate-400 font-semibold">• <span data-no-i18n>${a.wallet_label}</span></span>
             </div>
             <span class="text-[10px] font-mono text-slate-500">${timeStr}</span>
           </div>
-          <div class="text-xs text-slate-300 font-mono bg-black/60 p-3 rounded-xl whitespace-pre-line leading-relaxed border border-white/5">
+          <div data-no-i18n class="text-xs text-slate-300 font-mono bg-black/60 p-3 rounded-xl whitespace-pre-line leading-relaxed border border-white/5">
             ${a.message}
           </div>
         </div>
@@ -1417,7 +1422,7 @@ document.getElementById('form-add-wallet')?.addEventListener('submit', async (e)
 document.getElementById('btn-delete-selected-whale')?.addEventListener('click', async () => {
   if (!selectedWallet) return;
   playClickSound();
-  const ok = confirm(`"${selectedWallet.label}" cüzdanını takipten çıkarmak istediğinize emin misiniz?`);
+  const ok = confirm(T(`"${selectedWallet.label}" cüzdanını takipten çıkarmak istediğinize emin misiniz?`));
   if (!ok) return;
 
   try {
@@ -1537,7 +1542,7 @@ function updateSoundButton() {
 // Clear Alerts
 document.getElementById('btn-clear-alerts')?.addEventListener('click', async () => {
   playClickSound();
-  if (!confirm('Tüm bildirim geçmişini temizlemek istiyor musunuz?')) return;
+  if (!confirm(T('Tüm bildirim geçmişini temizlemek istiyor musunuz?'))) return;
   try {
     await fetch('/api/alerts', { method: 'DELETE' });
     loadAlerts();
@@ -1612,4 +1617,10 @@ window.addEventListener('DOMContentLoaded', () => {
   loadWallets();
   loadAlerts();
   startAutoRefresh();
+});
+
+// 🌐 Language switch: charts draw their labels on canvas, so redraw them
+document.addEventListener('hyp:lang', () => {
+  try { renderPnlHistory(); } catch (e) { /* not loaded yet */ }
+  try { if (selectedWallet && selectedWallet.state) renderCharts(selectedWallet.state.positions || []); } catch (e) { /* ignore */ }
 });
