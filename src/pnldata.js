@@ -48,6 +48,12 @@ async function getCoinPnl(address, days) {
       c.fees += parseFloat(f.fee || 0) || 0;
       c.volume += Math.abs(parseFloat(f.sz || 0)) * (parseFloat(f.px || 0) || 0);
       c.trades += 1;
+      // all-time pass also keeps the last 30 / 7 days per coin, so the /pnl report needs one fills download
+      if (days === 0 && t >= end - 30 * 86_400_000) {
+        const v = (parseFloat(f.closedPnl || 0) || 0) - (parseFloat(f.fee || 0) || 0);
+        c.w30 = (c.w30 || 0) + v;
+        if (t >= end - 7 * 86_400_000) c.w7 = (c.w7 || 0) + v;
+      }
       by.set(f.coin, c);
       const cp = parseFloat(f.closedPnl || 0) || 0;
       if (cp > 0) { rec.wins++; rec.sumWin += cp; } else if (cp < 0) { rec.losses++; rec.sumLoss += cp; }
@@ -81,13 +87,29 @@ async function getCoinPnl(address, days) {
     fs = Math.max(...rows.map(r => Number(r.time) || 0)) + 1;
     if (fpages === 10) fundingPartial = true;   // 5000 hourly rows: older-first, so the newest part is missing
   }
+  if (days === 0) {
+    let ws = end - 30 * 86_400_000;
+    for (let p = 0; p < 6; p++) {
+      const rows = await hyperliquid.postHyperliquid({ type: 'userFunding', user: address, startTime: ws, endTime: end }, 15000);
+      if (!Array.isArray(rows) || !rows.length) break;
+      for (const r of rows) {
+        const d = r.delta || {};
+        if (d.type !== 'funding' || !d.coin) continue;
+        const c = by.get(d.coin) || { coin: d.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
+        const u = parseFloat(d.usdc || 0) || 0;
+        c.w30 = (c.w30 || 0) + u;
+        if (Number(r.time) >= end - 7 * 86_400_000) c.w7 = (c.w7 || 0) + u;
+        by.set(d.coin, c);
+      }
+      if (rows.length < 500) break;
+      ws = Math.max(...rows.map(r => Number(r.time) || 0)) + 1;
+    }
+  }
   let portfolioPnl = null;
   try {
     const pk = { 0: 'allTime', 1: 'day', 7: 'week', 30: 'month' }[days];
-    const raw = await hyperliquid.postHyperliquid({ type: 'portfolio', user: address });
-    const per = (Array.isArray(raw) ? raw : []).find(([k]) => k === pk);
-    const h = per?.[1]?.pnlHistory || [];
-    if (h.length) portfolioPnl = parseFloat(h[h.length - 1][1]) - parseFloat(h[0][1]);
+    const h = ((await getPortfolio(address)).periods[pk] || {}).pnl || [];
+    if (h.length) portfolioPnl = h[h.length - 1][1] - h[0][1];
   } catch (e) { /* reconciliation line is optional */ }
   const st = tracker.getCachedState(address) || await hyperliquid.getClearinghouseState(address).catch(() => null);
   for (const p of st?.positions || []) {
@@ -156,10 +178,11 @@ function ratios(periods) {
       if (peak - v > best.usd) best = { usd: peak - v, peakT, troughT: t };
     }
     if (best.usd > 0) {
-      let avPeak = null;
-      for (const [t, a] of at.av || []) { if (t <= best.peakT) avPeak = a; else break; }
+      // % of the largest account value between peak and trough (deposits made later can not inflate it); never past −100%
+      let avMax = null;
+      for (const [t, a] of at.av || []) if (t >= best.peakT && t <= best.troughT && (avMax === null || a > avMax)) avMax = a;
       out.maxDdUsd = -best.usd;
-      out.maxDdPct = avPeak > 0 ? -(best.usd / avPeak) * 100 : null;
+      out.maxDdPct = avMax > 0 ? Math.max(-100, -(best.usd / avMax) * 100) : null;
       out.maxDdFrom = best.peakT; out.maxDdTo = best.troughT;
       const total = at.pnl[at.pnl.length - 1][1];
       out.recovery = total / best.usd;           // total PnL ÷ max drawdown ("recovery factor")

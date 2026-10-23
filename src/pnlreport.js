@@ -433,7 +433,9 @@ function page2(ctx, t, d) {
   txt(ctx, t.dayStats(pos, days.length, signed(best.d), signed(worst.d)), bx + 22, 446, { font: `600 14px ${F}`, color: SLATE });
   const top = 510, bottom = 790, gx = bx + 90, gw = bw - 120;
   const maxAbs = Math.max(1, ...days.map(x => Math.abs(x.d)));
-  const lo = Math.min(0, ...days.map(x => x.d)), hi = Math.max(0, ...days.map(x => x.d));
+  const lo = Math.min(0, ...days.map(x => x.d));
+  let hi = Math.max(0, ...days.map(x => x.d));
+  if (hi === lo) hi = lo + 1;
   const span = (hi - lo) || 1;
   const Y = v => top + (hi - v) / span * (bottom - top);
   ctx.font = `500 12px ${M}`;
@@ -451,7 +453,7 @@ function page2(ctx, t, d) {
     g.addColorStop(0, x.d >= 0 ? '#6ee7b7' : '#e11d48'); g.addColorStop(1, x.d >= 0 ? '#059669' : '#fda4af');
     ctx.fillStyle = g;
     rr(ctx, xx, Math.min(y0, y1), barW, Math.max(2, Math.abs(y1 - y0)), Math.min(4, barW / 2)); ctx.fill();
-    if (Math.abs(x.d) >= maxAbs * 0.5 || x === best || x === worst) {
+    if (x.d !== 0 && (Math.abs(x.d) >= maxAbs * 0.5 || x === best || x === worst)) {
       // negative labels hang below the bar; when that would hit the dates, write it inside the bar instead
       const inside = x.d < 0 && y1 + 80 > bottom + 10;
       ctx.save(); ctx.translate(xx + barW / 2, x.d >= 0 ? y1 - 8 : inside ? y1 - 8 : y1 + 8); ctx.rotate(-Math.PI / 2);
@@ -532,16 +534,8 @@ function page3(ctx, t, d) {
 }
 
 function page4(ctx, t, d) {
-  const [all, m30, w7] = d.coin;
-  const by = new Map();
-  for (const r of (all && all.rows) || []) by.set(r.coin, { ...r, n30: 0, n7: 0 });
-  for (const [src, key] of [[m30, 'n30'], [w7, 'n7']]) {
-    for (const r of (src && src.rows) || []) {
-      const x = by.get(r.coin) || { coin: r.coin, name: r.name, realized: 0, fees: 0, funding: 0, net: 0, volume: 0, trades: 0, unrealized: r.unrealized || 0, n30: 0, n7: 0 };
-      x[key] = r.net; by.set(r.coin, x);
-    }
-  }
-  const rows = [...by.values()].filter(r => r.trades || r.unrealized || r.n30 || r.n7).sort((a, b) => b.net - a.net);
+  const all = d.coin[0];
+  const rows = ((all && all.rows) || []).map(r => ({ ...r, n30: r.w30 || 0, n7: r.w7 || 0 })).filter(r => r.trades || r.unrealized || r.n30 || r.n7).sort((a, b) => b.net - a.net);
   const maxRows = 17;
   let shown = rows;
   if (rows.length > maxRows) {
@@ -603,15 +597,14 @@ function page5(ctx, t, d) {
 
 // ---------- data + render ----------
 async function collect(address) {
-  const [pf, all, m30, w7, state] = await Promise.all([
+  // one all-time fills download (it carries the 30 / 7 day per-coin sums too): light on HL's rate limit
+  const [pf, all, state] = await Promise.all([
     pnldata.getPortfolio(address),
     pnldata.getCoinPnl(address, 0),
-    pnldata.getCoinPnl(address, 30),
-    pnldata.getCoinPnl(address, 7),
     tracker.getCachedState(address) ? Promise.resolve(tracker.getCachedState(address)) : hyperliquid.getClearinghouseState(address),
   ]);
   for (const c of all.closes || []) if (!c.name) c.name = String(c.coin).startsWith('@') ? await telegram.spotName(c.coin) : c.coin;
-  return { periods: pf.periods || {}, ratios: pf.ratios || {}, coin: [all, m30, w7], state };
+  return { periods: pf.periods || {}, ratios: pf.ratios || {}, coin: [all], state };
 }
 
 // returns [Buffer png, …]

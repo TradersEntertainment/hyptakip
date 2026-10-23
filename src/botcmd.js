@@ -16,7 +16,8 @@ const pnlreport = require('./pnlreport');
 const API = () => `https://api.telegram.org/bot${(process.env.TELEGRAM_BOT_TOKEN || '').trim()}`;
 const status = { enabled: false, running: false, username: null, lastError: null, reports: 0 };
 let stopped = false, offset = 0;
-const queue = new Map();     // chat → { tail: Promise, n: waiting reports } — one report at a time per chat
+const queue = { tail: Promise.resolve(), n: 0 };   // one report at a time for all chats (HL rate limit), at most 3 waiting
+let startedAt = 0;
 
 async function call(method, body) {
   const res = await fetch(`${API()}/${method}`, {
@@ -51,13 +52,12 @@ const shortUsd = v => {
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function sendReport(chatId, wallet, lang, replyTo) {
-  const key = String(chatId);
-  const q = queue.get(key) || { tail: Promise.resolve(), n: 0 };
-  if (q.n >= 3) return Promise.resolve();          // a burst of /pnl: keep at most 3 waiting
-  q.n++;
-  q.tail = q.tail.then(() => buildAndSend(chatId, wallet, lang, replyTo)).finally(() => { if (--q.n === 0) queue.delete(key); });
-  queue.set(key, q);
-  return q.tail;
+  if (queue.n >= 3) {
+    return call('sendMessage', { chat_id: chatId, text: '⏳ Sırada zaten 3 rapor var, biraz sonra tekrar dene.' }).catch(() => {});
+  }
+  queue.n++;
+  queue.tail = queue.tail.then(() => buildAndSend(chatId, wallet, lang, replyTo)).finally(() => { queue.n--; });
+  return queue.tail;
 }
 
 async function buildAndSend(chatId, wallet, lang, replyTo) {
@@ -94,6 +94,7 @@ async function onMessage(msg) {
   if (m[1] && status.username && m[1].toLowerCase() !== status.username.toLowerCase()) return;   // meant for another bot
   const chatId = msg.chat.id;
   if (!allowedChats().has(String(chatId))) return;
+  if (Number(msg.date) * 1000 < startedAt - 60_000) return;   // backlog from before this start: do not answer old /pnl
   const words = String(m[2] || '').split(/\s+/).filter(Boolean);
   const lang = words.some(x => x.toLowerCase() === 'en') ? 'en' : 'tr';
   const rest = words.filter(x => !['en', 'tr'].includes(x.toLowerCase()));
@@ -122,6 +123,7 @@ async function onCallback(cq) {
 
 async function loop() {
   status.running = true;
+  let conflicts = 0;
   while (!stopped) {
     try {
       const ups = await call('getUpdates', { offset, timeout: 50, allowed_updates: ['message', 'callback_query'] });
@@ -131,12 +133,17 @@ async function loop() {
         else if (u.callback_query) onCallback(u.callback_query).catch(e => console.error('[BotCmd]', e.message));
       }
       status.lastError = null;
+      conflicts = 0;
     } catch (err) {
       status.lastError = err.message;
       if (err.code === 409) {
-        // another program reads this bot's updates (or a webhook is set): step aside instead of fighting it
-        console.error('[BotCmd] Telegram 409: bu bot token\'ını başka bir program da okuyor; /pnl dinleme durduruldu.', err.message);
-        break;
+        // another program reads this bot's updates (or a webhook is set). A short overlap during a redeploy also gives
+        // 409, so wait and retry a few times; if it keeps happening, step aside instead of fighting the other program.
+        conflicts++;
+        console.error(`[BotCmd] Telegram 409 (${conflicts}/5): bu bot token'ını başka bir program da okuyor.`, err.message);
+        if (conflicts >= 5) { status.lastError = '409: bu token başka bir programda da komut okuyor; /pnl dinleme durduruldu'; break; }
+        await new Promise(r => setTimeout(r, 60_000));
+        continue;
       }
       await new Promise(r => setTimeout(r, 5000));
     }
@@ -147,6 +154,7 @@ async function loop() {
 async function start() {
   status.enabled = process.env.TELEGRAM_COMMANDS === '1' && !!(process.env.TELEGRAM_BOT_TOKEN || '').trim();
   if (!status.enabled) return;
+  startedAt = Date.now();
   try { status.username = (await call('getMe', {})).username || null; } catch (e) { status.lastError = e.message; }
   console.log(`[BotCmd] /pnl komutu dinleniyor (@${status.username || '?'})`);
   loop();
