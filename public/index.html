@@ -24,11 +24,11 @@
 
   <!-- Live Market Ticker Bar -->
   <div class="relative z-30 bg-[#080b16]/90 border-b border-white/5 py-1.5 px-4 overflow-hidden backdrop-blur-md">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4 text-[11px]">
+    <div class="max-w-[2600px] mx-auto flex items-center justify-between gap-4 text-[0.6875rem]">
       
       <div class="flex items-center gap-2 text-cyan-400 font-bold shrink-0">
         <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
-        <span class="tracking-wider uppercase text-[10px]">HYPERLIQUID PIYASA:</span>
+        <span class="tracking-wider uppercase text-[0.625rem]">HYPERLIQUID PIYASA:</span>
       </div>
 
       <!-- Ticker Stream -->
@@ -56,7 +56,7 @@
       </div>
 
       <!-- Live Speed / Latency Indicator -->
-      <div class="hidden sm:flex items-center gap-2 text-[10px] text-slate-400 shrink-0">
+      <div class="hidden sm:flex items-center gap-2 text-[0.625rem] text-slate-400 shrink-0">
         <span class="text-emerald-400 font-bold">● L1 API: ONLINE</span>
         <span class="text-slate-600">|</span>
         <span id="stat-last-tick">Az önce</span>
@@ -67,7 +67,7 @@
 
   <!-- Top Navigation Header -->
   <header class="sticky top-0 z-40 bg-[#090d1a]/85 backdrop-blur-xl border-b border-white/10 px-4 lg:px-8 py-3.5">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+    <div class="max-w-[2600px] mx-auto flex flex-wrap items-center justify-between gap-4">
       
       <!-- Brand Logo -->
       <div class="flex items-center gap-3.5 cursor-pointer" onclick="location.reload()">
@@ -77,11 +77,11 @@
         <div>
           <div class="flex items-center gap-2">
             <span class="font-black text-xl tracking-tight text-white">HYP<span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">TAKIP</span></span>
-            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 tracking-wide">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.625rem] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 tracking-wide">
               <span class="live-pulse"></span> CANLI TAKİP
             </span>
           </div>
-          <p class="text-[11px] text-slate-400 font-medium tracking-tight">Hyperliquid Balina & Pozisyon Radar</p>
+          <p class="text-[0.6875rem] text-slate-400 font-medium tracking-tight">Hyperliquid Balina & Pozisyon Radar</p>
         </div>
       </div>
 
@@ -98,13 +98,13 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex items-center gap-2 sm:gap-3">
+      <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
         
         <!-- Language Toggle (TR / EN) -->
 <div class="lang-switch flex items-center gap-1 p-1 rounded-xl bg-slate-900/80 border border-white/10 " title="Dil: English / Türkçe">
           <i data-lucide="languages" class="w-4 h-4 text-cyan-400 mx-1"></i>
-          <button data-set-lang="tr" class="px-2 py-1 rounded-lg text-[11px] font-black transition">TR</button>
-          <button data-set-lang="en" class="px-2 py-1 rounded-lg text-[11px] font-black transition">EN</button>
+          <button data-set-lang="tr" class="px-2 py-1 rounded-lg text-[0.6875rem] font-black transition">TR</button>
+          <button data-set-lang="en" class="px-2 py-1 rounded-lg text-[0.6875rem] font-black transition">EN</button>
         </div>
 
         <!-- Sound FX Toggle -->
@@ -138,7 +138,7 @@
 
   <!-- Telegram Warning Banner (If not configured in Railway) -->
   <div id="telegram-warning-banner" class="hidden bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-xs text-amber-200 relative z-30">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+    <div class="max-w-[2600px] mx-auto flex items-center justify-between gap-2">
       <div class="flex items-center gap-2">
         <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
         <span><b>Telegram Botu Bekleniyor:</b> Bildirimlerin iletilmesi için Railway'de <b>Variables</b> sekmesine <code>TELEGRAM_BOT_TOKEN</code> ve <code>TELEGRAM_DEFAULT_CHAT_ID</code> değişkenlerini ekleyin.</span>
@@ -150,10 +150,10 @@
   </div>
 
   <!-- Main Content Layout -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+  <main class="flex-1 max-w-[2600px] w-full mx-auto p-4 lg:p-6 2xl:px-10 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
     
     <!-- LEFT SIDEBAR: Tracked Whales (4 cols) -->
-    <aside class="lg:col-span-4 space-y-4">
+    <aside class="lg:col-span-4 2xl:col-span-3 space-y-4">
       
       <!-- Whales Card Container -->
       <div class="ultra-glass rounded-2xl p-4">
@@ -198,7 +198,7 @@
           <i data-lucide="radio" class="w-4 h-4 animate-pulse"></i>
           <span>7/24 Gerçek Zamanlı Takip</span>
         </div>
-        <p class="text-slate-300 leading-relaxed text-[12px]">
+        <p class="text-slate-300 leading-relaxed text-[0.75rem]">
           Eklediğiniz cüzdanların Hyperliquid L1 üzerindeki yeni pozisyonları ve <b class="text-cyan-300">%10+ boyut değişimleri</b> anında tespit edilip Telegram'a iletilir.
         </p>
       </div>
@@ -206,7 +206,7 @@
     </aside>
 
     <!-- CENTER / MAIN VIEW (8 cols) -->
-    <section class="lg:col-span-8 space-y-5">
+    <section class="lg:col-span-8 2xl:col-span-9 space-y-5">
 
       <!-- Active Whale Hero Header Card -->
       <div id="selected-whale-header" class="ultra-glass rounded-2xl p-5 relative overflow-hidden">
@@ -221,23 +221,23 @@
               <i data-lucide="user-check" class="w-6 h-6 text-cyan-400"></i>
             </div>
 
-            <div>
+            <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
                 <h1 id="view-whale-name" data-no-i18n class="text-xl font-black text-white tracking-tight">Yükleniyor...</h1>
-                <span id="view-whale-tier" class="tag-whale px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 shadow-sm">
+                <span id="view-whale-tier" class="tag-whale px-2.5 py-0.5 rounded-full text-[0.625rem] font-mono font-bold flex items-center gap-1 shadow-sm">
                   <span>🐋 APEX WHALE</span>
                 </span>
-                <span id="view-leverage-risk" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                <span id="view-leverage-risk" class="px-2 py-0.5 rounded-full text-[0.625rem] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
                   RİSK: NORMAL
                 </span>
-                <span id="view-whale-status" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">AKTİF</span>
-                <span id="view-whale-threshold-pill" class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30">EŞİK: %10</span>
+                <span id="view-whale-status" class="px-2 py-0.5 rounded-full text-[0.625rem] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">AKTİF</span>
+                <span id="view-whale-threshold-pill" class="px-2 py-0.5 rounded-full text-[0.625rem] font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30">EŞİK: %10</span>
               </div>
               
               <!-- Address and Quick External Links -->
               <div class="flex flex-wrap items-center gap-2 mt-2 text-xs">
                 <span class="text-slate-500 font-medium">Adres:</span>
-                <code id="view-whale-address" class="px-2 py-0.5 rounded-lg bg-slate-900/90 text-cyan-300 font-mono text-[11px] border border-white/5 select-all">0x...</code>
+                <code id="view-whale-address" class="break-all px-2 py-0.5 rounded-lg bg-slate-900/90 text-cyan-300 font-mono text-[0.6875rem] border border-white/5 select-all">0x...</code>
                 <button id="btn-copy-address" title="Adresi Kopyala" class="p-1 hover:text-cyan-400 text-slate-400 transition cursor-pointer">
                   <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                 </button>
@@ -263,7 +263,7 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <!-- Whale Card (shareable image) -->
             <button id="btn-open-whale-card" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 to-purple-500/15 hover:from-cyan-500/25 hover:to-purple-500/25 text-xs font-bold text-cyan-200 border border-cyan-500/40 flex items-center gap-1.5 transition cursor-pointer">
               <i data-lucide="image" class="w-3.5 h-3.5 text-cyan-300"></i>
@@ -294,32 +294,32 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 relative z-10">
           
           <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
-            <div class="text-[11px] font-bold text-slate-400 mb-1">Toplam Portföy (Kasa)</div>
+            <div class="text-[0.6875rem] font-bold text-slate-400 mb-1">Toplam Portföy (Kasa)</div>
             <div id="metric-account-value" class="text-lg font-black text-white font-mono">$0.00</div>
             <div id="metric-unrealized-pnl" class="text-xs font-semibold mt-0.5 text-slate-400 font-mono">PnL: $0.00</div>
           </div>
 
           <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
-            <div class="text-[11px] font-bold text-slate-400 mb-1">Kullanılan Teminat</div>
+            <div class="text-[0.6875rem] font-bold text-slate-400 mb-1">Kullanılan Teminat</div>
             <div id="metric-margin-used" class="text-lg font-black text-white font-mono">$0.00</div>
             <div class="mt-1.5">
               <div class="liq-meter-track">
                 <div id="metric-margin-bar" class="liq-meter-fill bg-gradient-to-r from-cyan-400 to-blue-500" style="width: 0%"></div>
               </div>
-              <div id="metric-margin-ratio" class="text-[10px] text-slate-400 mt-1 font-mono">%0 Kullanım</div>
+              <div id="metric-margin-ratio" class="text-[0.625rem] text-slate-400 mt-1 font-mono">%0 Kullanım</div>
             </div>
           </div>
 
           <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
-            <div class="text-[11px] font-bold text-slate-400 mb-1">Çekilebilir Bakiye</div>
+            <div class="text-[0.6875rem] font-bold text-slate-400 mb-1">Çekilebilir Bakiye</div>
             <div id="metric-withdrawable" class="text-lg font-black text-white font-mono">$0.00</div>
-            <div class="text-[10px] text-emerald-400 font-bold mt-1 flex items-center gap-1">
+            <div class="text-[0.625rem] text-emerald-400 font-bold mt-1 flex items-center gap-1">
               <i data-lucide="check" class="w-3 h-3"></i> Serbest Nakit
             </div>
           </div>
 
           <div class="bg-slate-950/60 p-3.5 rounded-xl border border-white/5 ultra-card-hover">
-            <div class="text-[11px] font-bold text-slate-400 mb-1">Toplam Açık Pozisyon</div>
+            <div class="text-[0.6875rem] font-bold text-slate-400 mb-1">Toplam Açık Pozisyon</div>
             <div id="metric-notional-value" class="text-lg font-black text-cyan-300 font-mono">$0.00</div>
             <div id="metric-pos-count" class="text-xs text-cyan-400 mt-0.5 font-semibold">0 Pozisyon</div>
           </div>
@@ -336,20 +336,20 @@
                 <i data-lucide="pie-chart" class="w-4 h-4 text-cyan-400"></i>
                 <span class="text-xs font-bold text-white tracking-wide">Pozisyon Büyüklüğü Dağılımı</span>
               </div>
-              <span id="chart-long-short-ratio" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">%100 LONG</span>
+              <span id="chart-long-short-ratio" class="text-[0.625rem] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">%100 LONG</span>
             </div>
             
             <div class="h-44 flex items-center justify-center relative">
               <canvas id="chart-allocation"></canvas>
               <div id="chart-allocation-center" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                <span class="text-[10px] text-slate-500 font-semibold">Toplam Poz</span>
+                <span class="text-[0.625rem] text-slate-500 font-semibold">Toplam Poz</span>
                 <span id="chart-allocation-total" class="text-xs font-black font-mono text-cyan-300">$0.00</span>
               </div>
             </div>
 
             <!-- Long vs Short Ratio Bar -->
             <div class="mt-2 pt-2 border-t border-white/5">
-              <div class="flex justify-between text-[10px] font-mono mb-1">
+              <div class="flex justify-between text-[0.625rem] font-mono mb-1">
                 <span id="label-ratio-long" class="text-emerald-400 font-bold flex items-center gap-1">🟢 Long: %100</span>
                 <span id="label-ratio-short" class="text-rose-400 font-bold flex items-center gap-1">Short: %0 🔴</span>
               </div>
@@ -367,7 +367,7 @@
                 <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
                 <span class="text-xs font-bold text-white tracking-wide">Kâr/Zarar (PnL) Dağılımı</span>
               </div>
-              <span class="text-[10px] font-mono text-slate-400">$ / ROE</span>
+              <span class="text-[0.625rem] font-mono text-slate-400">$ / ROE</span>
             </div>
 
             <div class="h-48 relative flex items-center justify-center">
@@ -383,28 +383,28 @@
             <div class="flex items-center gap-2">
               <i data-lucide="line-chart" class="w-4 h-4 text-cyan-400"></i>
               <span class="text-xs font-bold text-white tracking-wide">Kâr/Zarar Geçmişi</span>
-              <span id="pnl-hist-summary" class="text-[10px] font-mono text-slate-400"></span>
+              <span id="pnl-hist-summary" class="text-[0.625rem] font-mono text-slate-400"></span>
             </div>
             <div id="pnl-hist-tabs" class="flex gap-1">
-              <button type="button" data-period="day" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">24 Saat</button>
-              <button type="button" data-period="week" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">7 Gün</button>
-              <button type="button" data-period="month" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">30 Gün</button>
-              <button type="button" data-period="allTime" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">Tümü</button>
+              <button type="button" data-period="day" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">24 Saat</button>
+              <button type="button" data-period="week" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">7 Gün</button>
+              <button type="button" data-period="month" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">30 Gün</button>
+              <button type="button" data-period="allTime" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">Tümü</button>
             </div>
           </div>
           <div class="h-56 relative">
             <canvas id="chart-pnl-history"></canvas>
             <div id="pnl-hist-empty" class="hidden absolute inset-0 flex items-center justify-center text-xs text-slate-500">Bu dönem için veri yok.</div>
           </div>
-          <p class="mt-1 text-[10px] text-slate-500">Kaynak: Hyperliquid portföy geçmişi (perp + spot, dönem başından birikimli kâr/zarar). Kesikli çizgi: hesap değeri.</p>
+          <p class="mt-1 text-[0.625rem] text-slate-500">Kaynak: Hyperliquid portföy geçmişi (perp + spot, dönem başından birikimli kâr/zarar). Kesikli çizgi: hesap değeri.</p>
 
           <div class="mt-4 pt-3 border-t border-white/5">
             <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <span class="text-xs font-bold text-white tracking-wide">Coin bazında kâr/zarar <span id="coin-pnl-period" class="text-[10px] font-mono text-slate-400"></span></span>
-              <span id="coin-pnl-note" class="text-[10px] font-mono text-slate-500"></span>
+              <span class="text-xs font-bold text-white tracking-wide">Coin bazında kâr/zarar <span id="coin-pnl-period" class="text-[0.625rem] font-mono text-slate-400"></span></span>
+              <span id="coin-pnl-note" class="text-[0.625rem] font-mono text-slate-500"></span>
             </div>
             <div class="overflow-x-auto">
-              <table class="w-full text-[11px] font-mono">
+              <table class="w-full text-[0.6875rem] font-mono">
                 <thead class="text-slate-500">
                   <tr class="border-b border-white/5">
                     <th class="text-left py-1.5 pr-2">Coin</th>
@@ -420,7 +420,7 @@
                 <tbody id="coin-pnl-body"><tr><td colspan="8" class="py-3 text-center text-slate-500">Yükleniyor…</td></tr></tbody>
               </table>
             </div>
-            <p id="coin-pnl-recon" class="mt-2 text-[10px] font-mono text-slate-400"></p>
+            <p id="coin-pnl-recon" class="mt-2 text-[0.625rem] font-mono text-slate-400"></p>
           </div>
         </div>
 
@@ -430,11 +430,11 @@
             <div class="flex items-center gap-2">
               <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
               <span class="text-xs font-bold text-white tracking-wide">Likidasyon Tehlike Radarı</span>
-              <span id="radar-highest-risk-pill" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+              <span id="radar-highest-risk-pill" class="text-[0.625rem] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
                 TÜM POZİSYONLAR GÜVENLİ
               </span>
             </div>
-            <span class="text-[10px] text-slate-500 font-mono">En Yakın Mesafe</span>
+            <span class="text-[0.625rem] text-slate-500 font-mono">En Yakın Mesafe</span>
           </div>
 
           <div id="radar-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
@@ -446,13 +446,13 @@
       </div>
 
       <!-- Navigation Tabs -->
-      <div class="flex items-center justify-between border-b border-white/10 pb-2">
-        <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
+        <div class="flex flex-wrap items-center gap-2">
           
           <button id="tab-btn-positions" class="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 flex items-center gap-2 transition">
             <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
             <span>Aktif Pozisyonlar</span>
-            <span id="tab-count-positions" class="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-mono">0</span>
+            <span id="tab-count-positions" class="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[0.625rem] font-mono">0</span>
           </button>
           
           <button id="tab-btn-fills" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2 transition">
@@ -463,12 +463,12 @@
           <button id="tab-btn-alerts" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 flex items-center gap-2 transition">
             <i data-lucide="bell" class="w-4 h-4"></i>
             <span>Bildirim Geçmişi</span>
-            <span id="tab-count-alerts" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono">0</span>
+            <span id="tab-count-alerts" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[0.625rem] font-mono">0</span>
           </button>
 
         </div>
 
-        <div class="text-xs text-slate-400 flex items-center gap-1.5">
+        <div class="text-xs text-slate-400 flex flex-wrap items-center gap-1.5">
           <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-purple-400"></i>
           <span>Uyarı Eşiği: <b id="view-threshold-label" class="text-white font-mono">%10</b></span>
         </div>
@@ -479,7 +479,7 @@
         <div class="ultra-glass rounded-2xl overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-950/80 text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-white/5">
+              <thead class="bg-slate-950/80 text-slate-400 uppercase font-bold text-[0.625rem] tracking-wider border-b border-white/5">
                 <tr>
                   <th class="py-3 px-4">Parite</th>
                   <th class="py-3 px-3">Yön</th>
@@ -506,7 +506,7 @@
         <div class="ultra-glass rounded-2xl overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-950/80 text-slate-400 uppercase font-bold text-[10px] tracking-wider border-b border-white/5">
+              <thead class="bg-slate-950/80 text-slate-400 uppercase font-bold text-[0.625rem] tracking-wider border-b border-white/5">
                 <tr>
                   <th class="py-3 px-4">Zaman</th>
                   <th class="py-3 px-3">Coin</th>
@@ -561,7 +561,7 @@
       </button>
       <div>
         <h2 class="text-xl font-bold glow-cyan-text text-left tracking-tight">Balinayı Düzenle</h2>
-        <p id="edit-wallet-address" class="text-[10px] text-slate-500 font-mono mt-1 break-all"></p>
+        <p id="edit-wallet-address" class="text-[0.625rem] text-slate-500 font-mono mt-1 break-all"></p>
       </div>
       <form id="form-edit-wallet" class="space-y-4">
         <div class="space-y-1.5">
@@ -572,13 +572,13 @@
           <label class="block text-xs font-semibold text-slate-300" for="input-edit-threshold">Pozisyon Değişim Eşiği (%)</label>
           <input type="text" inputmode="decimal" id="input-edit-threshold" placeholder="Örn: 10 · her işlem için 0.01" class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-400 transition font-mono">
           <div class="flex flex-wrap gap-1.5">
-            <button type="button" data-thr="0.01" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 transition cursor-pointer">Her işlem (%0.01)</button>
-            <button type="button" data-thr="1" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%1</button>
-            <button type="button" data-thr="5" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%5</button>
-            <button type="button" data-thr="10" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%10</button>
-            <button type="button" data-thr="25" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%25</button>
+            <button type="button" data-thr="0.01" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/20 transition cursor-pointer">Her işlem (%0.01)</button>
+            <button type="button" data-thr="1" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%1</button>
+            <button type="button" data-thr="5" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%5</button>
+            <button type="button" data-thr="10" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%10</button>
+            <button type="button" data-thr="25" class="px-2.5 py-1 rounded-lg text-[0.6875rem] font-bold bg-slate-800 text-slate-300 border border-white/10 hover:border-cyan-400 transition cursor-pointer">%25</button>
           </div>
-          <p class="text-[10px] text-slate-500">Pozisyon boyutu en az bu oranda değişince bildirim gelir. 0.01 = her değişim; boyut değişmezse bildirim gelmez.</p>
+          <p class="text-[0.625rem] text-slate-500">Pozisyon boyutu en az bu oranda değişince bildirim gelir. 0.01 = her değişim; boyut değişmezse bildirim gelmez.</p>
         </div>
         <div class="space-y-1.5">
           <label class="block text-xs font-semibold text-slate-300" for="input-edit-chatid">Telegram Chat ID (İsteğe Bağlı)</label>
@@ -588,24 +588,24 @@
           <input type="checkbox" id="input-edit-track-orders" class="mt-0.5 w-4 h-4 accent-cyan-400 cursor-pointer">
           <span class="space-y-0.5">
             <span class="block text-xs font-semibold text-slate-200">📝 Emirleri de bildir</span>
-            <span class="block text-[10px] text-slate-500">Bu cüzdan yeni limit emir koyunca, dolmadan önce bildirim gelir (chase limitlerde aynı coin ve yönde ilki; sonrakiler 10 dk susturulur). En çok 10 cüzdan.</span>
+            <span class="block text-[0.625rem] text-slate-500">Bu cüzdan yeni limit emir koyunca, dolmadan önce bildirim gelir (chase limitlerde aynı coin ve yönde ilki; sonrakiler 10 dk susturulur). En çok 10 cüzdan.</span>
           </span>
         </label>
         <label class="flex items-start gap-3 p-3 rounded-xl bg-[#06080e] border border-white/10 cursor-pointer hover:border-cyan-400 transition">
           <input type="checkbox" id="input-edit-track-spot" class="mt-0.5 w-4 h-4 accent-cyan-400 cursor-pointer">
           <span class="space-y-0.5">
             <span class="block text-xs font-semibold text-slate-200">🪙 Spot işlemleri bildir</span>
-            <span class="block text-[10px] text-slate-500">Spot alım/satım (ör. HYPE/USDC): dolumlar 15 sn toplanıp tek bildirim; aynı çift ve yönde 10 dk tekrar yok. $1.000 altı yok.</span>
+            <span class="block text-[0.625rem] text-slate-500">Spot alım/satım (ör. HYPE/USDC): dolumlar 15 sn toplanıp tek bildirim; aynı çift ve yönde 10 dk tekrar yok. $1.000 altı yok.</span>
           </span>
         </label>
         <label class="flex items-start gap-3 p-3 rounded-xl bg-[#06080e] border border-white/10 cursor-pointer hover:border-cyan-400 transition">
           <input type="checkbox" id="input-edit-track-transfers" class="mt-0.5 w-4 h-4 accent-cyan-400 cursor-pointer">
           <span class="space-y-0.5">
             <span class="block text-xs font-semibold text-slate-200">💸 Dışarı transferleri bildir</span>
-            <span class="block text-[10px] text-slate-500">Çekim (Arbitrum'a), başka adrese / alt hesaba gönderim, vault'a yatırma. Kendi içinde perp↔spot aktarım bildirilmez.</span>
+            <span class="block text-[0.625rem] text-slate-500">Çekim (Arbitrum'a), başka adrese / alt hesaba gönderim, vault'a yatırma. Kendi içinde perp↔spot aktarım bildirilmez.</span>
           </span>
         </label>
-        <p id="edit-live-warn" class="hidden text-[11px] text-amber-300">⚠️ Bu cüzdan canlı akışa giremiyor: Hyperliquid aynı anda en çok 10 cüzdanı canlı izletiyor. Emir / spot / transfer bildirimi gelmez; başka bir cüzdanda bu kutucukları kapatınca açılır.</p>
+        <p id="edit-live-warn" class="hidden text-[0.6875rem] text-amber-300">⚠️ Bu cüzdan canlı akışa giremiyor: Hyperliquid aynı anda en çok 10 cüzdanı canlı izletiyor. Emir / spot / transfer bildirimi gelmez; başka bir cüzdanda bu kutucukları kapatınca açılır.</p>
         <div class="flex gap-2">
           <button type="button" data-close-edit class="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 text-sm font-bold transition cursor-pointer">Vazgeç</button>
           <button type="submit" id="btn-submit-edit" class="flex-1 py-3 rounded-xl btn-ultra-cyan text-sm font-black transition cursor-pointer">Kaydet</button>
@@ -661,7 +661,7 @@
             placeholder="Örn: -5173499699" 
             class="w-full px-3.5 py-3 rounded-xl bg-[#06080e] border border-white/10 text-white placeholder-slate-600 text-sm font-mono focus:outline-none focus:border-cyan-400 transition"
           >
-          <p class="text-[10px] text-slate-500">Boş bırakılırsa Railway'deki genel Chat ID kullanılır.</p>
+          <p class="text-[0.625rem] text-slate-500">Boş bırakılırsa Railway'deki genel Chat ID kullanılır.</p>
         </div>
 
         <!-- Bildirim Hassasiyeti (% Değişim) -->
@@ -680,14 +680,14 @@
             class="w-full accent-cyan-400 bg-slate-800 h-2 rounded-lg cursor-pointer"
             oninput="document.getElementById('label-threshold-val').textContent = '%' + this.value"
           >
-          <p class="text-[10px] text-slate-500">Pozisyon boyutu en az bu oranda değiştiğinde bildirim gönderilir.</p>
+          <p class="text-[0.625rem] text-slate-500">Pozisyon boyutu en az bu oranda değiştiğinde bildirim gönderilir.</p>
         </div>
 
         <label class="flex items-start gap-3 p-3 rounded-xl bg-[#06080e] border border-white/10 cursor-pointer hover:border-cyan-400 transition">
           <input type="checkbox" id="input-add-track-orders" class="mt-0.5 w-4 h-4 accent-cyan-400 cursor-pointer">
           <span class="space-y-0.5">
             <span class="block text-xs font-semibold text-slate-200">📝 Emirleri de bildir</span>
-            <span class="block text-[10px] text-slate-500">Bu cüzdan yeni limit emir koyunca, dolmadan önce bildirim gelir (chase limitlerde aynı coin ve yönde ilki; sonrakiler 10 dk susturulur). En çok 10 cüzdan.</span>
+            <span class="block text-[0.625rem] text-slate-500">Bu cüzdan yeni limit emir koyunca, dolmadan önce bildirim gelir (chase limitlerde aynı coin ve yönde ilki; sonrakiler 10 dk susturulur). En çok 10 cüzdan.</span>
           </span>
         </label>
 
@@ -736,7 +736,7 @@
         <div class="p-3.5 rounded-xl bg-slate-950/80 border border-white/10 space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-slate-300">Telegram Bot Token</span>
-            <div id="status-bot-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            <div id="status-bot-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
               <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
               <span>Railway'de Bekleniyor</span>
             </div>
@@ -747,7 +747,7 @@
             <span id="display-bot-token" class="text-cyan-300 font-semibold">TELEGRAM_BOT_TOKEN</span>
           </div>
 
-          <p class="text-[11px] text-slate-400 leading-relaxed">
+          <p class="text-[0.6875rem] text-slate-400 leading-relaxed">
             <span class="text-cyan-400 font-semibold">⚡ Railway Variables:</span> Bot token web sitesinden değil, Railway dashboard'undaki <b>Variables</b> sekmesine <code>TELEGRAM_BOT_TOKEN</code> olarak eklenir.
           </p>
         </div>
@@ -756,7 +756,7 @@
         <div class="p-3.5 rounded-xl bg-slate-950/80 border border-white/10 space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold text-slate-300">Varsayılan Telegram Chat ID</span>
-            <div id="status-chat-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30 font-mono">
+            <div id="status-chat-badge" class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.6875rem] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30 font-mono">
               <span>-5173499699</span>
             </div>
           </div>
@@ -766,7 +766,7 @@
             <span id="display-default-chatid" class="text-slate-300 font-semibold font-mono">-5173499699</span>
           </div>
 
-          <p class="text-[11px] text-slate-400 leading-relaxed">
+          <p class="text-[0.6875rem] text-slate-400 leading-relaxed">
             Ana balina ve diğer cüzdanlar için varsayılan bildirim grubu.
           </p>
         </div>
@@ -828,7 +828,7 @@
             </div>
             <span class="font-black text-sm tracking-tight text-white">HYP<span class="text-cyan-400">TAKIP</span></span>
           </div>
-          <span class="holo-tag px-2 py-0.5 rounded-full text-[9px] font-mono font-bold text-cyan-300">
+          <span class="holo-tag px-2 py-0.5 rounded-full text-[0.5625rem] font-mono font-bold text-cyan-300">
             HYPERLIQUID L1
           </span>
         </div>
@@ -837,9 +837,9 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <div id="card-whale-name" data-no-i18n class="font-extrabold text-sm text-white">Alpha Whale</div>
-            <div id="card-whale-address" class="text-[10px] text-slate-400 font-mono">0x3b9e...c503</div>
+            <div id="card-whale-address" class="text-[0.625rem] text-slate-400 font-mono">0x3b9e...c503</div>
           </div>
-          <span id="card-whale-tier" class="tag-whale px-2 py-0.5 rounded-full text-[9px] font-mono font-bold">
+          <span id="card-whale-tier" class="tag-whale px-2 py-0.5 rounded-full text-[0.5625rem] font-mono font-bold">
             👑 APEX WHALE
           </span>
         </div>
@@ -850,7 +850,7 @@
             <div id="card-coin-badge"></div>
             <div>
               <span id="card-coin-name" class="font-black text-base">ASTER</span>
-              <span class="text-[10px] text-slate-400 block font-mono">PERP</span>
+              <span class="text-[0.625rem] text-slate-400 block font-mono">PERP</span>
             </div>
           </div>
           <span id="card-side-badge" class="badge-long px-3 py-1 rounded-xl text-xs font-black">
@@ -860,7 +860,7 @@
 
         <!-- Giant Glowing PnL & ROE Display -->
         <div class="my-5 text-center bg-black/40 p-4 rounded-2xl border border-white/5">
-          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Getiri Oranı (ROE)</div>
+          <div class="text-[0.625rem] uppercase font-bold text-slate-400 tracking-wider mb-1">Getiri Oranı (ROE)</div>
           <div id="card-roe-val" class="text-3xl font-black font-mono text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]">
             +102.74%
           </div>
@@ -870,24 +870,24 @@
         </div>
 
         <!-- Price Metrics -->
-        <div class="grid grid-cols-2 gap-2 text-[11px] font-mono bg-white/[0.03] p-3 rounded-xl border border-white/5 mb-4">
+        <div class="grid grid-cols-2 gap-2 text-[0.6875rem] font-mono bg-white/[0.03] p-3 rounded-xl border border-white/5 mb-4">
           <div>
-            <span class="text-slate-400 block text-[9px]">Giriş Fiyatı</span>
+            <span class="text-slate-400 block text-[0.5625rem]">Giriş Fiyatı</span>
             <span id="card-entry-price" class="text-white font-bold">$0.7017</span>
           </div>
           <div class="text-right">
-            <span class="text-slate-400 block text-[9px]">Mark Fiyatı</span>
+            <span class="text-slate-400 block text-[0.5625rem]">Mark Fiyatı</span>
             <span id="card-mark-price" class="text-cyan-300 font-bold">$0.8458</span>
           </div>
         </div>
 
         <!-- Bottom Footer with Hypurrscan Verification -->
-        <div class="flex items-center justify-between pt-3 border-t border-white/10 text-[10px]">
+        <div class="flex items-center justify-between pt-3 border-t border-white/10 text-[0.625rem]">
           <span class="text-slate-400 flex items-center gap-1">
             <i data-lucide="shield-check" class="w-3.5 h-3.5 text-cyan-400"></i>
             <span>Hypurrscan Doğrulamalı</span>
           </span>
-          <span class="text-slate-500 font-mono text-[9px]" id="card-timestamp">CANLI</span>
+          <span class="text-slate-500 font-mono text-[0.5625rem]" id="card-timestamp">CANLI</span>
         </div>
 
       </div>
@@ -912,7 +912,7 @@
       <div class="flex items-center justify-between gap-3">
         <div>
           <h3 class="text-sm font-black text-white flex items-center gap-2"><i data-lucide="image" class="w-4 h-4 text-cyan-400"></i><span>Balina Kartı</span></h3>
-          <p class="text-[11px] text-slate-400">Paylaşmak için hazır görsel (1200×675). Dönemi seç, indir ya da kopyala.</p>
+          <p class="text-[0.6875rem] text-slate-400">Paylaşmak için hazır görsel (1200×675). Dönemi seç, indir ya da kopyala.</p>
         </div>
         <button id="btn-whale-card-close" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition" title="Kapat">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -925,27 +925,27 @@
       </div>
         <div class="lang-switch flex items-center gap-1 p-1 rounded-xl bg-slate-900/80 border border-white/10 text-slate-300" title="Kart ve site dili">
           <i data-lucide="languages" class="w-4 h-4 text-cyan-400 mx-1"></i>
-          <button data-set-lang="tr" class="px-2 py-1 rounded-lg text-[11px] font-black transition">TR</button>
-          <button data-set-lang="en" class="px-2 py-1 rounded-lg text-[11px] font-black transition">EN</button>
+          <button data-set-lang="tr" class="px-2 py-1 rounded-lg text-[0.6875rem] font-black transition">TR</button>
+          <button data-set-lang="en" class="px-2 py-1 rounded-lg text-[0.6875rem] font-black transition">EN</button>
         </div>
       </div>
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <div id="whale-card-periods" class="flex gap-1.5 text-[11px] font-bold">
+        <div id="whale-card-periods" class="flex gap-1.5 text-[0.6875rem] font-bold">
           <button data-period="day" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">24S</button>
           <button data-period="week" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">7G</button>
           <button data-period="month" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">30G</button>
           <button data-period="allTime" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">Tümü</button>
         </div>
         <div class="flex flex-wrap items-center gap-3">
-        <label class="flex items-center gap-2 text-[11px] text-slate-300">
+        <label class="flex items-center gap-2 text-[0.6875rem] text-slate-300">
           <span>Karttaki isim</span>
           <input id="whale-card-name" data-no-i18n type="text" maxlength="60" autocomplete="off" class="w-44 sm:w-56 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-white/10 focus:border-cyan-500/50 outline-none text-xs text-white">
         </label>
-        <label class="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer select-none">
+        <label class="flex items-center gap-2 text-[0.6875rem] text-slate-300 cursor-pointer select-none">
           <input id="whale-card-show-address" type="checkbox" class="accent-cyan-400" checked>
           <span>Adresi göster</span>
         </label>
-        <label class="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer select-none">
+        <label class="flex items-center gap-2 text-[0.6875rem] text-slate-300 cursor-pointer select-none">
           <input id="whale-card-show-logo" type="checkbox" class="accent-cyan-400" checked>
           <span>HYPTAKIP logosu</span>
         </label>
