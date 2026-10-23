@@ -35,7 +35,7 @@
     'Kâr/Zarar Geçmişi': 'PnL History', '24 Saat': '24 Hours', '7 Gün': '7 Days', '30 Gün': '30 Days', 'Tümü': 'All',
     'Bu dönem için veri yok.': 'No data for this period.', 'Kaynak: Hyperliquid portföy geçmişi (perp + spot, dönem başından birikimli kâr/zarar). Kesikli çizgi: hesap değeri.':
       'Source: Hyperliquid portfolio history (perp + spot, cumulative PnL since the start of the period). Dashed line: account value.',
-    'Coin bazında kâr/zarar': 'PnL per coin', 'Coin': 'Coin', 'Gerçekleşen': 'Realized', 'Ücret': 'Fees', 'Funding': 'Funding',
+    'Coin bazında kâr/zarar': 'PnL per coin', 'Coin': 'Coin', 'Gerçekleşen': 'Realized', 'Ücret': 'Fees', 'Ort. Fiyat': 'Avg. Price', 'Değer': 'Value', 'Dolum': 'Fills', 'K/Z (net)': 'PnL (net)', 'açılış': 'open', 'Kapanışların net K/Z': 'Net PnL of closes', 'Kârlı / zararlı': 'Wins / losses', 'Funding': 'Funding',
     'Net (dönem)': 'Net (period)', 'Açık poz. (şu an)': 'Open pos. (now)', 'Hacim': 'Volume', 'İşlem': 'Trades', 'TOPLAM': 'TOTAL',
     'Kapanan işlemlerin kâr/zararı (HL closedPnl)': 'PnL of closed trades (HL closedPnl)',
     'Dönemde ödenen (−) / alınan (+) funding': 'Funding paid (−) / received (+) in the period',
@@ -132,6 +132,7 @@
     [/^= işlemlerden net$/, '= net from trades'],
     [/^\+ açık pozisyonların bu dönemdeki değer değişimi$/, '+ change in value of open positions this period'],
     [/^· son (\d+) gün$/, '· last $1 days'], [/^· son 24 saat$/, '· last 24 hours'], [/^· tüm zaman$/, '· all time'],
+    [/^son (\d+) dolum · (.+)'den beri$/, 'last $1 fills · since $2'],
     [/^(\d+) gün$/, '$1 days'], [/^24 saat$/, '24 hours'], [/^tüm zaman$/, 'all time'],
     [/^(?:⚠️ HL yalnız son ~10\.000 işlemi veriyor: veri (.+?)'den itibaren · )?(\d+) işlem kaydı( · ⚠️ funding kısmi \(çok uzun geçmiş\))?$/,
       (m, from, n, fp) => (from ? `⚠️ HL only returns the last ~10,000 trades: data from ${from} · ` : '') + `${n} trade records`

@@ -1160,7 +1160,7 @@ document.getElementById('btn-open-share-card')?.addEventListener('click', () => 
 async function loadFills() {
   if (!selectedWallet) return;
   const tbody = document.getElementById('fills-table-body');
-  tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-500 font-sans">İşlemler yükleniyor...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-slate-500 font-sans">İşlemler yükleniyor...</td></tr>`;
 
   try {
     const res = await fetch(`/api/wallets/${selectedWallet.address}/fills`);
@@ -1173,12 +1173,39 @@ async function loadFills() {
       return;
     }
 
-    tbody.innerHTML = fills.slice(0, 50).map(f => {
+    // One row per order: fills of the same coin and action within 2 min are merged (user 23.10: "recent trades pnl").
+    // K/Z (net) = realized PnL − fee; opening trades have no realized PnL (shown as "açılış").
+    const groups = [];
+    for (const f of fills) {                       // newest first
+      const g = groups[groups.length - 1];
+      const dir = f.dir || f.side;
+      if (g && g.coin === f.coin && g.dir === dir && g.tFirst - f.time <= 120_000) {
+        g.ntl += f.px * f.sz; g.sz += f.sz; g.pnl += f.closedPnl || 0; g.fee += f.fee || 0; g.n++; g.tFirst = f.time;
+      } else {
+        groups.push({ coin: f.coin, dir, side: f.side, time: f.time, tFirst: f.time, ntl: f.px * f.sz, sz: f.sz,
+                      pnl: f.closedPnl || 0, fee: f.fee || 0, n: 1 });
+      }
+    }
+    const closes = groups.filter(g => g.pnl !== 0);
+    const net = closes.reduce((s, g) => s + g.pnl - g.fee, 0);
+    const wins = closes.filter(g => g.pnl - g.fee > 0).length;
+    const since = groups.length ? new Date(groups[groups.length - 1].tFirst).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    const sumEl = document.getElementById('fills-summary');
+    if (sumEl) {
+      const chip = (k, v, cls = 'text-white') => `<span class="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-slate-400">${k} <b class="font-mono ${cls}">${v}</b></span>`;
+      sumEl.innerHTML = chip('Kapanışların net K/Z', `${net >= 0 ? '+' : ''}${formatUsd(net)}`, net >= 0 ? 'text-emerald-400' : 'text-rose-400')
+        + chip('Kârlı / zararlı', `${wins} / ${closes.length - wins}`)
+        + chip('İşlem', String(groups.length))
+        + `<span class="text-slate-500">son ${fills.length} dolum · ${since}'den beri</span>`;
+    }
+
+    tbody.innerHTML = groups.slice(0, 60).map(f => {
       const isBuy = f.side === 'BUY';
       const dirColor = isBuy ? 'text-emerald-400' : 'text-rose-400';
       const timeStr = new Date(f.time).toLocaleString('tr-TR');
-      const pnl = f.closedPnl || 0;
+      const pnl = f.pnl ? f.pnl - f.fee : 0;
       const pnlColor = pnl > 0 ? 'text-emerald-400' : (pnl < 0 ? 'text-rose-400' : 'text-slate-400');
+      const avg = f.sz ? f.ntl / f.sz : 0;
 
       return `
         <tr class="ultra-tr">
@@ -1188,9 +1215,11 @@ async function loadFills() {
             <span>${f.coin}</span>
           </td>
           <td class="py-2.5 px-3 font-bold text-[0.6875rem] ${dirColor}">${f.dir || f.side}</td>
-          <td class="py-2.5 px-3 text-right text-white">$${f.px}</td>
+          <td class="py-2.5 px-3 text-right text-white">$${formatCrypto(avg, avg >= 100 ? 2 : avg >= 1 ? 4 : 6)}</td>
           <td class="py-2.5 px-3 text-right text-slate-300">${formatCrypto(f.sz)}</td>
-          <td class="py-2.5 px-3 text-right font-bold ${pnlColor}">${pnl !== 0 ? (pnl > 0 ? '+' : '') + formatUsd(pnl) : '-'}</td>
+          <td class="py-2.5 px-3 text-right text-slate-300">${fmtUsdShort(f.ntl)}</td>
+          <td class="py-2.5 px-3 text-right text-slate-500">${f.n}</td>
+          <td class="py-2.5 px-3 text-right font-bold ${pnlColor}">${f.pnl ? (pnl > 0 ? '+' : '') + formatUsd(pnl) : '<span class="text-slate-500 font-normal">açılış</span>'}</td>
           <td class="py-2.5 px-3 text-right text-slate-400 text-[0.625rem]">${formatUsd(f.fee)}</td>
         </tr>
       `;
