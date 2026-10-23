@@ -1,9 +1,10 @@
 // 🤖 Telegram commands: /pnl → detailed PnL report as an album of images (src/pnlreport.js).
 // User (23.10): "telegramdan bota /pnl yazınca yollasın tüm detayları" · "birden çok görsel şeklinde de atabilir".
 //
-// Off unless TELEGRAM_COMMANDS=1 (Railway Variables). Reading commands means calling Telegram's getUpdates, and only
-// ONE program may do that per bot token: if this token is also used by another bot program that reads commands,
-// they would fight (Telegram answers 409) — then this module stops by itself and logs why.
+// On by default (user 23.10: "defaulttan aç"); TELEGRAM_COMMANDS=0 turns it off. Reading commands means calling
+// Telegram's getUpdates, and only ONE program may do that per bot token. If this token is also used by another bot
+// program that reads commands, Telegram answers 409: a 409 in the first 3 minutes after start means exactly that,
+// so this module steps aside at once (the other bot loses at most one poll); a later 409 (deploy overlap) is retried.
 //
 //   /pnl            one wallet tracked → its report; several → buttons to pick
 //   /pnl 2          2nd wallet in the list · /pnl 0xabc… address prefix · /pnl propr  part of the name
@@ -140,6 +141,11 @@ async function loop() {
         // another program reads this bot's updates (or a webhook is set). A short overlap during a redeploy also gives
         // 409, so wait and retry a few times; if it keeps happening, step aside instead of fighting the other program.
         conflicts++;
+        if (Date.now() - startedAt < 180_000) {
+          status.lastError = '409: bu bot token\'ı başka bir programda da komut okuyor; /pnl dinleme durduruldu (TELEGRAM_COMMANDS=0 ile kapatılabilir)';
+          console.error('[BotCmd]', status.lastError);
+          break;
+        }
         console.error(`[BotCmd] Telegram 409 (${conflicts}/5): bu bot token'ını başka bir program da okuyor.`, err.message);
         if (conflicts >= 5) { status.lastError = '409: bu token başka bir programda da komut okuyor; /pnl dinleme durduruldu'; break; }
         await new Promise(r => setTimeout(r, 60_000));
@@ -152,7 +158,7 @@ async function loop() {
 }
 
 async function start() {
-  status.enabled = process.env.TELEGRAM_COMMANDS === '1' && !!(process.env.TELEGRAM_BOT_TOKEN || '').trim();
+  status.enabled = process.env.TELEGRAM_COMMANDS !== '0' && !!(process.env.TELEGRAM_BOT_TOKEN || '').trim();
   if (!status.enabled) return;
   startedAt = Date.now();
   try { status.username = (await call('getMe', {})).username || null; } catch (e) { status.lastError = e.message; }

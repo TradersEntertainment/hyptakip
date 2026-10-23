@@ -78,9 +78,10 @@ Gruba `/pnl` yazınca bot, cüzdanın detaylı kâr/zarar raporunu **5 görselli
 
 Kullanım: `/pnl` (tek cüzdan varsa onu, birden çoksa düğmelerle seçtirir) · `/pnl 2` (listede 2.) · `/pnl propr` (adında geçen) · `/pnl 0xabc` (adres başı) · sona `en` eklenirse İngilizce.
 
-**Açmak için** Railway Variables'a `TELEGRAM_COMMANDS=1` ekleyin. Komutu okumak için bot Telegram'dan mesajları çeker
-(getUpdates); bunu bir bot token'ı için **tek bir program** yapabilir. Aynı token başka bir bot programında da komut
-okuyorsa ikisi çakışır: bu durumda HYPTAKIP kendiliğinden geri çekilir ve `/api/botcmd/status` hatayı gösterir. Bot
+**Varsayılan açık**; kapatmak için Railway Variables'a `TELEGRAM_COMMANDS=0`. Komutu okumak için bot Telegram'dan
+mesajları çeker (getUpdates); bunu bir bot token'ı için **tek bir program** yapabilir. Aynı token başka bir bot
+programında da komut okuyorsa, HYPTAKIP açılıştan sonraki ilk çakışmada (409) kendiliğinden geri çekilir ve
+`/api/botcmd/status` nedenini gösterir. Bot
 yalnız bilinen sohbetlere cevap verir (varsayılan Chat ID, cüzdanların Chat ID'leri ve isteğe bağlı
 `PNL_ALLOWED_CHAT_IDS`, virgülle).
 
