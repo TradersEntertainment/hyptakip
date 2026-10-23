@@ -55,7 +55,7 @@ app.post('/api/wallets', async (req, res) => {
   try {
     const { address, label, telegram_chat_id, threshold_pct, is_active, track_orders } = req.body;
 
-    if (!address || !address.trim().startsWith('0x') || address.trim().length !== 42) {
+    if (!address || !/^0x[0-9a-fA-F]{40}$/.test(address.trim())) {
       return res.status(400).json({
         success: false,
         error: 'Geçersiz Ethereum/Hyperliquid cüzdan adresi. 0x ile başlayan 42 karakterlik bir adres giriniz.'
@@ -71,7 +71,7 @@ app.post('/api/wallets', async (req, res) => {
       telegram_chat_id: telegram_chat_id?.trim(),
       threshold_pct: db.parsePct(threshold_pct),
       is_active: is_active !== undefined ? is_active : 1,
-      track_orders: !!track_orders
+      track_orders: track_orders === undefined ? undefined : !!track_orders   // left out → keep the stored value
     });
     orderstream.refresh();
 

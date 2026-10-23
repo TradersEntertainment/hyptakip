@@ -20,7 +20,8 @@ const URL = process.env.HYPERLIQUID_WS_URL || 'wss://api.hyperliquid.xyz/ws';
 const MAX_USERS = 10;
 const CHASE_SEC = parseInt(process.env.ORDER_CHASE_SEC || '600', 10);
 const MIN_USD = parseFloat(process.env.ORDER_ALERT_MIN_USD || '1000');
-const PING_MS = 50_000;
+const PING_MS = 30_000;
+const STALE_MS = PING_MS * 2 + 10_000;   // no message (pong included) for this long → half-open socket, reconnect
 
 const conns = new Map();          // address → { ws, timer, backoff, since, closed }
 const lastAlert = new Map();      // address|coin|side → ms of the last order seen in this chase
@@ -72,28 +73,50 @@ function open(address) {
     return retry(address);
   }
   c.ws = ws;
+  // Node 22 (undici) fires only 'error' when the handshake fails, never 'close'; newer Node fires both.
+  // One guard per socket: retry exactly once either way (review: a failed connect never retried).
+  let lost = false;
+  const onLost = () => {
+    if (lost) return;
+    lost = true;
+    if (c.ws === ws) { clearInterval(c.timer); c.ws = null; }
+    try { ws.close(); } catch (e) { /* not open */ }
+    if (!c.closed && !c.ws) retry(address);
+  };
   ws.onopen = () => {
     c.backoff = 1000;
     c.since = Date.now();
+    c.lastMsg = Date.now();
+    c.error = null;
     ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'orderUpdates', user: address } }));
     clearInterval(c.timer);
     c.timer = setInterval(() => {
-      try { ws.send(JSON.stringify({ method: 'ping' })); } catch (e) { /* onclose reconnects */ }
+      if (Date.now() - (c.lastMsg || 0) > STALE_MS) {         // half-open: pings get no pong, nothing arrives
+        console.error(`[Orders] Akış sessiz, yeniden bağlanılıyor: ${address}`);
+        return onLost();
+      }
+      try { ws.send(JSON.stringify({ method: 'ping' })); } catch (e) { /* onLost reconnects */ }
     }, PING_MS);
     console.log(`[Orders] Emir akışı açık: ${address}`);
   };
   ws.onmessage = (m) => {
+    c.lastMsg = Date.now();
     let d;
     try { d = JSON.parse(m.data); } catch (e) { return; }
+    if (d.channel === 'error') {                              // e.g. rejected subscription: do not look "open"
+      c.error = String(d.data).slice(0, 200);
+      stats.errors = (stats.errors || 0) + 1;
+      console.error(`[Orders] HL hata (${address}):`, c.error);
+      return;
+    }
     if (d.channel !== 'orderUpdates' || !Array.isArray(d.data)) return;
     for (const item of d.data) onItem(address, item, c.since || Date.now());
   };
-  ws.onerror = (e) => console.error(`[Orders] WebSocket hatası (${address}):`, e?.message || 'bilinmiyor');
-  ws.onclose = () => {
-    clearInterval(c.timer);
-    if (c.ws === ws) c.ws = null;
-    if (!c.closed) retry(address);
+  ws.onerror = (e) => {
+    console.error(`[Orders] WebSocket hatası (${address}):`, e?.message || 'bilinmiyor');
+    onLost();
   };
+  ws.onclose = onLost;
 }
 
 function retry(address) {
@@ -135,7 +158,9 @@ function stop() {
 }
 
 function status() {
-  return { connections: [...conns.entries()].map(([a, c]) => ({ address: a, open: c.ws?.readyState === 1 })),
+  return { connections: [...conns.entries()].map(([a, c]) => ({
+             address: a, open: c.ws?.readyState === 1 && !c.error, error: c.error || null,
+             lastMsgAgoSec: c.lastMsg ? Math.round((Date.now() - c.lastMsg) / 1000) : null })),
            maxUsers: MAX_USERS, chaseSec: CHASE_SEC, minUsd: MIN_USD, ...stats };
 }
 

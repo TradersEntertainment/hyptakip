@@ -273,6 +273,42 @@ ${title}
  * 📝 New order alert (orderstream.js). First line = phone preview: side, coin, size, price, who.
  * The stream does not say open/close or reduce-only, so the current position is shown instead of guessing.
  */
+let spotNames = { at: 0, map: {} };
+/** '@142' → 'UBTC/USDC' (HL spotMeta, cached 1 h). Falls back to the raw '@N'. */
+async function spotName(coin) {
+  if (!coin.startsWith('@')) return coin;
+  if (Date.now() - spotNames.at > 3_600_000) {
+    try {
+      const hl = require('./hyperliquid');
+      const meta = await hl.postHyperliquid({ type: 'spotMeta' }, 5000);
+      const toks = meta?.tokens || [];
+      const map = {};
+      for (const u of meta?.universe || []) {
+        const [a, b] = u.tokens || [];
+        if (u.name && toks[a] && toks[b]) map[u.name] = `${toks[a].name}/${toks[b].name}`;
+      }
+      spotNames = { at: Date.now(), map };
+    } catch (e) {
+      spotNames.at = Date.now() - 3_000_000;   // retry in ~10 min
+    }
+  }
+  return spotNames.map[coin] || coin;
+}
+
+/** Order type from HL orderStatus (the stream has no trigger flag: a TP/SL looked like a plain limit). */
+async function orderKind(address, oid) {
+  try {
+    const hl = require('./hyperliquid');
+    const r = await hl.postHyperliquid({ type: 'orderStatus', user: address, oid }, 5000);
+    const o = r?.order?.order;
+    if (!o) return null;
+    return { isTrigger: !!o.isTrigger, orderType: o.orderType || null, triggerPx: o.triggerPx || null,
+             triggerCondition: o.triggerCondition || null };
+  } catch (e) {
+    return null;
+  }
+}
+
 async function notifyOrderAlert({ wallet, order }) {
   const tracker = require('./tracker');
   const who = esc(wallet.label || shortAddr(wallet.address));
@@ -282,21 +318,29 @@ async function notifyOrderAlert({ wallet, order }) {
   const usd = sz * px;
   const coin = String(order.coin || '');
   const spot = coin.startsWith('@') || coin.includes('/');
+  const name = await spotName(coin);
+  const kind = await orderKind(wallet.address, order.oid);
+  const trig = kind?.isTrigger;
+  const ro = order.reduceOnly ? ' · reduce-only' : '';
+  const typeTxt = kind ? (trig ? `${kind.orderType || 'tetikli'} (TP/SL)` : (kind.orderType || 'Limit')) : 'emir tipi bilinmiyor';
+  const refPx = trig && kind.triggerPx ? parseFloat(kind.triggerPx) : parseFloat(order.limitPx || 0);
   const st = tracker.getCachedState(wallet.address);
   const pos = (st?.positions || []).find(p => p.coin === coin);
   const posTxt = pos
     ? `${pos.side === 'LONG' ? '🟢' : '🔴'} ${pos.side} ${formatUsd(pos.positionValue)}`
     : (spot ? 'spot (pozisyon yok)' : 'bu coinde açık pozisyon yok');
   const mark = pos?.currentPrice ? parseFloat(pos.currentPrice) : null;
-  const dist = mark ? ` (güncel fiyata %${(Math.abs(px - mark) / mark * 100).toFixed(2)})` : '';
-  const head = `📝 ${buy ? '🟢 ALIŞ' : '🔴 SATIŞ'} emri ${esc(coin)} ${shortUsd(usd)} @ ${px} · ${who}`;
+  const dist = mark ? ` (güncel fiyata %${(Math.abs(refPx - mark) / mark * 100).toFixed(2)})` : '';
+  const head = trig
+    ? `📝 ${buy ? '🟢 ALIŞ' : '🔴 SATIŞ'} TP/SL ${esc(name)} ${shortUsd(usd)} tetik ${refPx}${ro} · ${who}`
+    : `📝 ${buy ? '🟢 ALIŞ' : '🔴 SATIŞ'} emri ${esc(name)} ${shortUsd(usd)} @ ${px}${ro} · ${who}`;
   const hypurrscanUrl = `https://hypurrscan.io/address/${wallet.address}`;
   const hyperdashUrl = `https://hyperdash.com/address/${wallet.address}`;
   const body = `
 <b>${head}</b>
 
 👤 <b>Balina:</b> ${who} (<code>${shortAddr(wallet.address)}</code>)
-🧾 <b>Emir:</b> ${buy ? 'ALIŞ' : 'SATIŞ'} limit · ${sz.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${esc(coin)} @ $${px}${dist}
+🧾 <b>Emir:</b> ${buy ? 'ALIŞ' : 'SATIŞ'} ${esc(typeTxt)}${ro} · ${sz.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${esc(name)} @ $${px}${trig && kind.triggerCondition ? ` · ${esc(kind.triggerCondition)}` : ''}${dist}
 💵 <b>Tutar:</b> ${formatUsd(usd)}
 📦 <b>Mevcut pozisyon:</b> ${posTxt}
 ⏱️ <b>Zaman:</b> ${new Date(Number(order.timestamp) || Date.now()).toLocaleString('tr-TR')}

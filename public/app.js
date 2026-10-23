@@ -1228,7 +1228,7 @@ document.getElementById('form-add-wallet')?.addEventListener('submit', async (e)
         telegram_chat_id: chatId || null,
         threshold_pct: parseFloat(threshold) || 10.0,
         is_active: 1,
-        track_orders: document.getElementById('input-add-track-orders')?.checked || false
+        track_orders: document.getElementById('input-add-track-orders')?.checked ? true : undefined
       })
     });
 
