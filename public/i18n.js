@@ -85,7 +85,7 @@
     'Metni Kopyala': 'Copy Text', 'PnL Kartı Oluştur ve Paylaş': 'Create and share a PnL card', 'Net Bakiye': 'Net Balance', 'PORTFÖY': 'PORTFOLIO',
     'GENEL KASA': 'TOTAL EQUITY',
     // whale card modal
-    'Görseli İndir': 'Download Image', 'Görseli Kopyala': 'Copy Image', 'Paylaş': 'Share', 'Adresi göster': 'Show address', 'Karttaki isim': 'Name on card',
+    'Görseli İndir': 'Download Image', 'Görseli Kopyala': 'Copy Image', 'Paylaş': 'Share', 'Adresi göster': 'Show address', 'Kart ve site dili': 'Card and site language', 'Karttaki isim': 'Name on card',
     'Paylaşmak için hazır görsel (1200×675). Dönemi seç, indir ya da kopyala.': 'Ready-to-share image (1200×675). Pick a period, then download or copy.',
     '24S': '24H', 'Karne Kartı': 'Track Record', '📸 Anlık Kart': '📸 Snapshot Card', '🏆 Karne Kartı': '🏆 Track Record Card', '7G': '7D', '30G': '30D',
     // alert type labels / toasts / confirms
@@ -226,11 +226,14 @@
     }
   });
 
+  // TR | EN switches (header + card window): the active language is the lit one
   function paintButton() {
-    const b = document.getElementById('btn-lang');
-    if (!b) return;
-    const label = b.querySelector('[data-lang-label]');
-    if (label) label.textContent = lang === 'en' ? 'TR' : 'EN';
+    document.querySelectorAll('[data-set-lang]').forEach(b => {
+      const on = b.dataset.setLang === lang;
+      b.classList.toggle('bg-cyan-500', on); b.classList.toggle('text-black', on);
+      b.classList.toggle('text-slate-400', !on); b.classList.toggle('hover:text-white', !on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
   }
 
   function set(l) {
@@ -244,7 +247,10 @@
 
   function init() {
     obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] });
-    document.getElementById('btn-lang')?.addEventListener('click', () => set(lang === 'en' ? 'tr' : 'en'));
+    document.addEventListener('click', e => {
+      const b = e.target.closest && e.target.closest('[data-set-lang]');
+      if (b && b.dataset.setLang !== lang) set(b.dataset.setLang);
+    });
     if (lang === 'en') set('en'); else paintButton();
   }
 

@@ -101,10 +101,11 @@
       <div class="flex items-center gap-2 sm:gap-3">
         
         <!-- Language Toggle (TR / EN) -->
-        <button id="btn-lang" title="Dil: English / Türkçe" class="px-2 sm:px-2.5 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-cyan-300 border border-white/10 transition flex items-center gap-1.5 text-xs font-black">
-          <i data-lucide="languages" class="w-4 h-4 text-cyan-400"></i>
-          <span data-lang-label>EN</span>
-        </button>
+<div class="lang-switch flex items-center gap-1 p-1 rounded-xl bg-slate-900/80 border border-white/10 " title="Dil: English / Türkçe">
+          <i data-lucide="languages" class="w-4 h-4 text-cyan-400 mx-1"></i>
+          <button data-set-lang="tr" class="px-2 py-1 rounded-lg text-[11px] font-black transition">TR</button>
+          <button data-set-lang="en" class="px-2 py-1 rounded-lg text-[11px] font-black transition">EN</button>
+        </div>
 
         <!-- Sound FX Toggle -->
         <button id="btn-toggle-sound" title="Sesli Bildirimleri Aç/Kapat" class="p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 border border-white/10 transition flex items-center gap-1.5 text-xs">
@@ -917,9 +918,16 @@
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
+      <div class="flex flex-wrap items-center justify-between gap-2">
       <div id="whale-card-kinds" class="flex gap-1.5 text-xs font-bold">
         <button data-kind="snap" class="px-3 py-1.5 rounded-lg border border-white/10 bg-slate-900 text-slate-300">📸 Anlık Kart</button>
         <button data-kind="record" class="px-3 py-1.5 rounded-lg border border-white/10 bg-slate-900 text-slate-300">🏆 Karne Kartı</button>
+      </div>
+        <div class="lang-switch flex items-center gap-1 p-1 rounded-xl bg-slate-900/80 border border-white/10 text-slate-300" title="Kart ve site dili">
+          <i data-lucide="languages" class="w-4 h-4 text-cyan-400 mx-1"></i>
+          <button data-set-lang="tr" class="px-2 py-1 rounded-lg text-[11px] font-black transition">TR</button>
+          <button data-set-lang="en" class="px-2 py-1 rounded-lg text-[11px] font-black transition">EN</button>
+        </div>
       </div>
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div id="whale-card-periods" class="flex gap-1.5 text-[11px] font-bold">
