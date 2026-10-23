@@ -199,7 +199,7 @@
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     background(ctx);
-    logo(ctx, t);
+    if (d.showLogo) logo(ctx, t);
 
     const LX = 64;
     head(ctx, t, d, t.period[d.period] || '');
@@ -336,7 +336,7 @@
     ctx.font = `600 13px ${FONT}`; ctx.fillStyle = DIM;
     ctx.fillText(t.data, LX, H - 40);
     ctx.textAlign = 'right'; ctx.font = `700 14px ${MONO}`; ctx.fillStyle = CYAN;
-    ctx.fillText(location.host || 'hyptakip', W - 56, H - 40);
+    if (d.showLogo) ctx.fillText(location.host || 'hyptakip', W - 56, H - 40);
     ctx.textAlign = 'left';
   }
 
@@ -355,7 +355,7 @@
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     background(ctx);
-    logo(ctx, t);
+    if (d.showLogo) logo(ctx, t);
     head(ctx, t, d, t.rec, true);
     const LX = 64;
     const per = d.periods || {};
@@ -473,7 +473,7 @@
     ctx.font = `600 13px ${FONT}`; ctx.fillStyle = DIM;
     ctx.fillText(t.data, LX, H - 40);
     ctx.textAlign = 'right'; ctx.font = `700 14px ${MONO}`; ctx.fillStyle = CYAN;
-    ctx.fillText(location.host || 'hyptakip', W - 56, H - 40);
+    if (d.showLogo) ctx.fillText(location.host || 'hyptakip', W - 56, H - 40);
     ctx.textAlign = 'left';
   }
 
@@ -498,7 +498,7 @@
     if (state.kind === 'record') {
       const all = state.coins.allTime;
       drawRecord(el('whale-card-canvas'), {
-        label: state.customName || w.label, customName: !!state.customName, address: w.address, showAddress: state.showAddress, accountValue: parseFloat(st.accountValue || 0),
+        label: state.customName || w.label, customName: !!state.customName, showLogo: state.showLogo, address: w.address, showAddress: state.showAddress, accountValue: parseFloat(st.accountValue || 0),
         periods: state.portfolio, all: all === undefined ? 'loading' : all,
       });
       return;
@@ -506,7 +506,7 @@
     const resp = state.coins[state.period];
     const coins = resp === undefined ? undefined : resp && resp.rows;
     draw(el('whale-card-canvas'), {
-      label: state.customName || w.label, customName: !!state.customName, address: w.address, showAddress: state.showAddress, period: state.period,
+      label: state.customName || w.label, customName: !!state.customName, showLogo: state.showLogo, address: w.address, showAddress: state.showAddress, period: state.period,
       accountValue: parseFloat(st.accountValue || 0), positions: st.positions || [],
       portfolio: pf || null, coins: coins === undefined ? 'loading' : coins,
     });
@@ -553,9 +553,12 @@
     const addr = w.address.toLowerCase();
     // keep the picked period / address toggle, but always refetch so the numbers match the timestamp on the card
     state = { address: addr, period: state && state.address === addr ? state.period : 'month',
-              showAddress: state ? state.showAddress : true, kind: kind === 'record' ? 'record' : 'snap', portfolio: null, coins: {} };
+              showAddress: state ? state.showAddress : true, showLogo: true, kind: kind === 'record' ? 'record' : 'snap', portfolio: null, coins: {} };
     if (period && DAYS[period] !== undefined) state.period = period;
     el('whale-card-show-address').checked = state.showAddress;
+    // HYPTAKIP logo + site address on the card: optional, remembered in this browser (user 23.10: "istersem sileyim istersem kalsın")
+    try { state.showLogo = localStorage.getItem('hyp_card_logo') !== '0'; } catch (e) { state.showLogo = true; }
+    el('whale-card-show-logo').checked = state.showLogo;
     // name on the card only (the wallet's own label is not changed); remembered per wallet in this browser
     try { state.customName = localStorage.getItem('hyp_card_name_' + addr) || ''; } catch (e) { state.customName = ''; }
     el('whale-card-name').value = state.customName;
@@ -580,6 +583,11 @@
       state.period = b.dataset.period; state.kind = 'snap'; render(); load();
     }));
     el('whale-card-show-address').addEventListener('change', e => { state.showAddress = e.target.checked; render(); });
+    el('whale-card-show-logo').addEventListener('change', e => {
+      state.showLogo = e.target.checked;
+      try { localStorage.setItem('hyp_card_logo', state.showLogo ? '1' : '0'); } catch (err) { /* ignore */ }
+      render();
+    });
     el('whale-card-name').addEventListener('input', e => {
       state.customName = e.target.value.trim().slice(0, 60);
       try {
