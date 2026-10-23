@@ -46,6 +46,12 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at DESC);
   `);
 
+  // Migration: per-wallet live order alerts (orderstream.js)
+  const cols = database.prepare('PRAGMA table_info(wallets)').all().map(c => c.name);
+  if (!cols.includes('track_orders')) {
+    database.exec('ALTER TABLE wallets ADD COLUMN track_orders INTEGER DEFAULT 0');
+  }
+
   // Default settings
   const defaultSettings = [
     ['telegram_bot_token', process.env.TELEGRAM_BOT_TOKEN || ''],
@@ -113,7 +119,7 @@ function parsePct(v, def = 10.0) {
   return Number.isFinite(n) && n >= 0 ? Math.max(n, 0.01) : def;
 }
 
-function upsertWallet({ address, label, telegram_chat_id = null, threshold_pct = 10.0, is_active = 1 }) {
+function upsertWallet({ address, label, telegram_chat_id = null, threshold_pct = 10.0, is_active = 1, track_orders }) {
   const database = getDb();
   const cleanAddress = address.trim().toLowerCase();
   const cleanLabel = (label && label.trim()) || `Balina (${cleanAddress.slice(0, 6)}...${cleanAddress.slice(-4)})`;
@@ -127,12 +133,16 @@ function upsertWallet({ address, label, telegram_chat_id = null, threshold_pct =
       SET label = ?, telegram_chat_id = ?, threshold_pct = ?, is_active = ?
       WHERE LOWER(address) = LOWER(?)
     `).run(cleanLabel, cleanChatId, threshold, is_active ? 1 : 0, cleanAddress);
+    if (track_orders !== undefined) {
+      database.prepare('UPDATE wallets SET track_orders = ? WHERE LOWER(address) = LOWER(?)')
+        .run(track_orders ? 1 : 0, cleanAddress);
+    }
     return getWallet(cleanAddress);
   } else {
     database.prepare(`
-      INSERT INTO wallets (address, label, telegram_chat_id, threshold_pct, is_active)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(cleanAddress, cleanLabel, cleanChatId, threshold, is_active ? 1 : 0);
+      INSERT INTO wallets (address, label, telegram_chat_id, threshold_pct, is_active, track_orders)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(cleanAddress, cleanLabel, cleanChatId, threshold, is_active ? 1 : 0, track_orders ? 1 : 0);
     return getWallet(cleanAddress);
   }
 }

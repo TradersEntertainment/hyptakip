@@ -269,7 +269,50 @@ ${title}
   return result;
 }
 
+/**
+ * 📝 New order alert (orderstream.js). First line = phone preview: side, coin, size, price, who.
+ * The stream does not say open/close or reduce-only, so the current position is shown instead of guessing.
+ */
+async function notifyOrderAlert({ wallet, order }) {
+  const tracker = require('./tracker');
+  const who = esc(wallet.label || shortAddr(wallet.address));
+  const buy = order.side === 'B';
+  const px = parseFloat(order.limitPx || 0);
+  const sz = Math.abs(parseFloat(order.sz || 0));
+  const usd = sz * px;
+  const coin = String(order.coin || '');
+  const spot = coin.startsWith('@') || coin.includes('/');
+  const st = tracker.getCachedState(wallet.address);
+  const pos = (st?.positions || []).find(p => p.coin === coin);
+  const posTxt = pos
+    ? `${pos.side === 'LONG' ? '🟢' : '🔴'} ${pos.side} ${formatUsd(pos.positionValue)}`
+    : (spot ? 'spot (pozisyon yok)' : 'bu coinde açık pozisyon yok');
+  const mark = pos?.currentPrice ? parseFloat(pos.currentPrice) : null;
+  const dist = mark ? ` (güncel fiyata %${(Math.abs(px - mark) / mark * 100).toFixed(2)})` : '';
+  const head = `📝 ${buy ? '🟢 ALIŞ' : '🔴 SATIŞ'} emri ${esc(coin)} ${shortUsd(usd)} @ ${px} · ${who}`;
+  const hypurrscanUrl = `https://hypurrscan.io/address/${wallet.address}`;
+  const hyperdashUrl = `https://hyperdash.com/address/${wallet.address}`;
+  const body = `
+<b>${head}</b>
+
+👤 <b>Balina:</b> ${who} (<code>${shortAddr(wallet.address)}</code>)
+🧾 <b>Emir:</b> ${buy ? 'ALIŞ' : 'SATIŞ'} limit · ${sz.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${esc(coin)} @ $${px}${dist}
+💵 <b>Tutar:</b> ${formatUsd(usd)}
+📦 <b>Mevcut pozisyon:</b> ${posTxt}
+⏱️ <b>Zaman:</b> ${new Date(Number(order.timestamp) || Date.now()).toLocaleString('tr-TR')}
+<i>Chase emirlerde aynı coin ve yöndeki yeni emirler ${Math.round((parseInt(process.env.ORDER_CHASE_SEC || '600', 10)) / 60)} dk susturulur.</i>
+
+🔗 <a href="${hypurrscanUrl}"><b>Hypurrscan'de İncele</b></a> | <a href="${hyperdashUrl}">Hyperdash</a>
+  `.trim();
+  db.addAlert({
+    wallet_address: wallet.address, wallet_label: wallet.label, coin, alert_type: 'NEW_ORDER', message: body,
+    details: { order }
+  });
+  return await sendTelegramMessage(body, wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID);
+}
+
 module.exports = {
+  notifyOrderAlert,
   sendTelegramMessage,
   sendTestMessage,
   notifyPositionAlert,

@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const config = require('./config');
 const db = require('./db');
+const orderstream = require('./orderstream');
 const hyperliquid = require('./hyperliquid');
 const telegram = require('./telegram');
 const tracker = require('./tracker');
@@ -52,7 +53,7 @@ app.get('/api/wallets', async (req, res) => {
 // Add new wallet
 app.post('/api/wallets', async (req, res) => {
   try {
-    const { address, label, telegram_chat_id, threshold_pct, is_active } = req.body;
+    const { address, label, telegram_chat_id, threshold_pct, is_active, track_orders } = req.body;
 
     if (!address || !address.trim().startsWith('0x') || address.trim().length !== 42) {
       return res.status(400).json({
@@ -61,13 +62,18 @@ app.post('/api/wallets', async (req, res) => {
       });
     }
 
+    if (track_orders && ordersFull(address)) {
+      return res.status(400).json({ success: false, error: `Emir bildirimi en çok ${orderstream.MAX_USERS} cüzdanda açılabilir (Hyperliquid sınırı).` });
+    }
     const saved = db.upsertWallet({
       address: address.trim(),
       label: label?.trim(),
       telegram_chat_id: telegram_chat_id?.trim(),
       threshold_pct: db.parsePct(threshold_pct),
-      is_active: is_active !== undefined ? is_active : 1
+      is_active: is_active !== undefined ? is_active : 1,
+      track_orders: !!track_orders
     });
+    orderstream.refresh();
 
     // Run immediate check in background to initialize state
     tracker.checkWallet(saved).catch(err => {
@@ -84,20 +90,36 @@ app.post('/api/wallets', async (req, res) => {
 app.put('/api/wallets/:address', (req, res) => {
   try {
     const { address } = req.params;
-    const { label, telegram_chat_id, threshold_pct, is_active } = req.body;
+    const { label, telegram_chat_id, threshold_pct, is_active, track_orders } = req.body;
 
     const fields = {};
     if (label !== undefined) fields.label = label.trim();
     if (telegram_chat_id !== undefined) fields.telegram_chat_id = telegram_chat_id ? telegram_chat_id.trim() : null;
     if (threshold_pct !== undefined) fields.threshold_pct = db.parsePct(threshold_pct);
     if (is_active !== undefined) fields.is_active = is_active ? 1 : 0;
+    if (track_orders !== undefined) fields.track_orders = track_orders ? 1 : 0;
+    if (fields.track_orders && ordersFull(address)) {
+      return res.status(400).json({ success: false, error: `Emir bildirimi en çok ${orderstream.MAX_USERS} cüzdanda açılabilir (Hyperliquid sınırı).` });
+    }
 
     const updated = db.updateWallet(address, fields);
     if (!updated) return res.status(404).json({ success: false, error: 'Cüzdan bulunamadı' });
+    orderstream.refresh();
     res.json({ success: true, wallet: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// HL allows live order streams for at most 10 wallets per IP
+function ordersFull(address) {
+  const others = db.getWallets().filter(w => Number(w.track_orders) === 1 && w.address.toLowerCase() !== String(address).toLowerCase());
+  return others.length >= orderstream.MAX_USERS;
+}
+
+// Live order stream status
+app.get('/api/orders/status', (req, res) => {
+  res.json({ success: true, ...orderstream.status() });
 });
 
 // Delete wallet
@@ -105,6 +127,7 @@ app.delete('/api/wallets/:address', (req, res) => {
   try {
     const { address } = req.params;
     db.deleteWallet(address);
+    orderstream.refresh();
     res.json({ success: true, message: 'Cüzdan takipten çıkarıldı' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -253,6 +276,7 @@ app.post('/api/tracker/trigger', async (req, res) => {
 // Initialize DB and start server
 db.initDb();
 tracker.startTracker();
+orderstream.start();
 
 const server = app.listen(config.PORT, () => {
   console.log(`=========================================`);
@@ -266,6 +290,7 @@ const server = app.listen(config.PORT, () => {
 function shutdown() {
   console.log('[Server] Kapatılıyor...');
   tracker.stopTracker();
+  orderstream.stop();
   server.close(() => {
     process.exit(0);
   });

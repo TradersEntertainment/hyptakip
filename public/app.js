@@ -483,6 +483,7 @@ function renderWalletsList() {
             <span>${w.label}</span>
           </div>
           <div class="flex items-center gap-1.5">
+            ${Number(w.track_orders) === 1 ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-semibold" title="Emir bildirimi açık">📝</span>' : ''}
             <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 font-mono font-semibold">
               %${w.threshold_pct || 10}
             </span>
@@ -1060,14 +1061,16 @@ async function loadAlerts() {
         NEW_POSITION: '⚡',
         SIZE_CHANGE: '📈',
         CLOSED_POSITION: '🏁',
-        LIQUIDATION_RISK: '🔥'
+        LIQUIDATION_RISK: '🔥',
+        NEW_ORDER: '📝'
       };
 
       const typeLabels = {
         NEW_POSITION: 'YENİ POZİSYON',
         SIZE_CHANGE: 'BOYUT DEĞİŞİMİ',
         CLOSED_POSITION: 'KAPATILDI',
-        LIQUIDATION_RISK: 'LİKİDASYON RİSKİ'
+        LIQUIDATION_RISK: 'LİKİDASYON RİSKİ',
+        NEW_ORDER: 'YENİ EMİR'
       };
 
       const timeStr = new Date(a.created_at).toLocaleString('tr-TR');
@@ -1224,7 +1227,8 @@ document.getElementById('form-add-wallet')?.addEventListener('submit', async (e)
         address,
         telegram_chat_id: chatId || null,
         threshold_pct: parseFloat(threshold) || 10.0,
-        is_active: 1
+        is_active: 1,
+        track_orders: document.getElementById('input-add-track-orders')?.checked || false
       })
     });
 
@@ -1278,6 +1282,7 @@ document.getElementById('btn-edit-selected-whale')?.addEventListener('click', ()
   document.getElementById('input-edit-label').value = selectedWallet.label || '';
   document.getElementById('input-edit-threshold').value = selectedWallet.threshold_pct ?? 10;
   document.getElementById('input-edit-chatid').value = selectedWallet.telegram_chat_id || '';
+  document.getElementById('input-edit-track-orders').checked = Number(selectedWallet.track_orders) === 1;
   editModal.classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
   document.getElementById('input-edit-threshold').focus();
@@ -1300,7 +1305,8 @@ document.getElementById('form-edit-wallet')?.addEventListener('submit', async (e
       body: JSON.stringify({
         label: document.getElementById('input-edit-label').value.trim(),
         threshold_pct: document.getElementById('input-edit-threshold').value.trim(),  // sunucu çözer (parsePct)
-        telegram_chat_id: document.getElementById('input-edit-chatid').value.trim() || null
+        telegram_chat_id: document.getElementById('input-edit-chatid').value.trim() || null,
+        track_orders: document.getElementById('input-edit-track-orders').checked
       })
     });
     const data = await res.json();
