@@ -1289,6 +1289,8 @@ document.getElementById('btn-edit-selected-whale')?.addEventListener('click', ()
   document.getElementById('input-edit-track-orders').checked = Number(selectedWallet.track_orders) === 1;
   document.getElementById('input-edit-track-spot').checked = Number(selectedWallet.track_spot ?? 1) === 1;
   document.getElementById('input-edit-track-transfers').checked = Number(selectedWallet.track_transfers ?? 1) === 1;
+  const anyLive = ['track_orders', 'track_spot', 'track_transfers'].some(k => Number(selectedWallet[k] ?? (k === 'track_orders' ? 0 : 1)) === 1);
+  document.getElementById('edit-live-warn')?.classList.toggle('hidden', !(anyLive && selectedWallet.live === false));
   editModal.classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
   document.getElementById('input-edit-threshold').focus();

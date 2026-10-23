@@ -30,6 +30,7 @@ app.get('/health', (req, res) => {
 app.get('/api/wallets', async (req, res) => {
   try {
     const wallets = db.getWallets();
+    const live = orderstream.wanted();
     const enriched = wallets.map(w => {
       let state = null;
       if (w.last_state) {
@@ -41,6 +42,7 @@ app.get('/api/wallets', async (req, res) => {
       }
       return {
         ...w,
+        live: live.has(w.address.toLowerCase()),   // has a live stream slot (HL allows 10 wallets)
         state: state || tracker.getCachedState(w.address)
       };
     });

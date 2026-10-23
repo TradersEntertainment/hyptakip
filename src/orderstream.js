@@ -38,6 +38,7 @@ const conns = new Map();          // address → { ws, timer, backoff, since, cl
 const lastAlert = new Map();      // address|coin|side → ms of the last order seen in this chase
 const spotBuf = new Map();        // address|coin|side → { fills: [], timer }
 const spotQuiet = new Map();      // address|coin|side → ms until which spot fills stay quiet
+const spotCarry = new Map();      // address|coin|side → { fills, until } batches under the minimum, added to the next
 let stats = { sent: 0, quiet: 0, small: 0, reconnects: 0, spot: 0, spotQuiet: 0, transfers: 0 };
 
 const on = (w, k) => w[k] === undefined || w[k] === null ? k !== 'track_orders' : Number(w[k]) === 1;
@@ -54,6 +55,9 @@ function wanted() {
   return new Map(ws.slice(0, MAX_USERS).map(w => [w.address.toLowerCase(), subsOf(w)]));
 }
 
+// HL system addresses: 0x2222…2222 (HYPE) and 0x20 + zeros + token index — a send there bridges to HyperEVM
+const isSystem = a => a === '0x2222222222222222222222222222222222222222' || /^0x200{20,}[0-9a-f]*$/.test(a);
+
 const isSpot = coin => String(coin).startsWith('@') || String(coin).includes('/');
 
 /** One ledger update → outgoing transfer {kind, usd, token, amount, to} or null (incoming / internal / other). */
@@ -69,22 +73,41 @@ function outgoing(address, upd) {
     case 'internalTransfer':
     case 'subAccountTransfer':
       if (from !== me || !to || to === me) return null;
-      return { kind: d.type === 'subAccountTransfer' ? 'alt hesaba transfer' : 'başka adrese transfer (perp USDC)',
+      // the delta has no master/sub direction: neutral label (review: sub → master read "alt hesaba")
+      return { kind: d.type === 'subAccountTransfer' ? 'ana/alt hesap arası transfer' : 'başka adrese transfer (perp USDC)',
                usd: num(d.usdc), token: 'USDC', amount: num(d.usdc), to };
     case 'spotTransfer':
     case 'send':
       if (from !== me || !to || to === me) return null;
+      if (isSystem(to)) {
+        return { kind: "HyperEVM'e köprü (kendi adresi)", usd: num(d.usdcValue), token: d.token || '?',
+                 amount: num(d.amount), to: null };
+      }
       return { kind: d.type === 'send' ? 'başka adrese gönderim' : 'spot transfer', usd: num(d.usdcValue),
                token: d.token || '?', amount: num(d.amount), to };
-    case 'vaultDeposit':
-      return { kind: "vault'a yatırma", usd: num(d.usdc), token: 'USDC', amount: num(d.usdc), to: String(d.vault || '').toLowerCase() || null };
+    case 'vaultDeposit': {
+      const v = String(d.vault || '').toLowerCase();
+      if (v === me) return null;                  // the tracked wallet IS the vault: someone deposited into it
+      return { kind: "vault'a yatırma", usd: num(d.usdc), token: 'USDC', amount: num(d.usdc), to: v || null };
+    }
     default:
       return null;
   }
 }
 
+const seenKeys = new Map();       // address → Set of ledger hash / fill tid already handled (reconnect replays)
+function firstTime(address, k) {
+  let s = seenKeys.get(address);
+  if (!s) { s = new Set(); seenKeys.set(address, s); }
+  if (s.has(k)) return false;
+  s.add(k);
+  if (s.size > 5000) s.delete(s.values().next().value);
+  return true;
+}
+
 async function onTransfer(address, upd, since) {
   if (Number(upd?.time || 0) < since - 5000) return;
+  if (!firstTime(address, `l:${upd.hash}:${upd.time}:${upd.delta?.type}`)) return;
   const t = outgoing(address, upd);
   if (!t || !(t.usd >= TRANSFER_MIN_USD)) return;
   const wallet = db.getWallet(address);
@@ -100,6 +123,7 @@ async function onTransfer(address, upd, since) {
 /** Spot fill → batch per (coin, side); returns 'quiet' | 'batched' | 'skip'. */
 function onSpotFill(address, fill, since, nowMs = Date.now()) {
   if (!fill || !isSpot(fill.coin) || Number(fill.time || 0) < since - 5000) return 'skip';
+  if (!firstTime(address, `f:${fill.tid ?? `${fill.hash}:${fill.oid}:${fill.time}`}`)) return 'skip';
   const key = `${address}|${fill.coin}|${fill.side}`;
   if (nowMs < (spotQuiet.get(key) || 0)) {
     spotQuiet.set(key, nowMs + CHASE_SEC * 1000);       // still buying/selling: stay quiet while it continues
@@ -120,8 +144,15 @@ async function flushSpot(address, key) {
   const b = spotBuf.get(key);
   spotBuf.delete(key);
   if (!b || !b.fills.length) return;
+  // Slices under the minimum add up (review: a TWAP of $347 slices every 30 s never alerted)
+  const carry = spotCarry.get(key);
+  spotCarry.delete(key);
+  if (carry && Date.now() < carry.until) b.fills = carry.fills.concat(b.fills);
   const usd = b.fills.reduce((s, f) => s + Math.abs(parseFloat(f.sz || 0)) * parseFloat(f.px || 0), 0);
-  if (!(usd >= SPOT_MIN_USD)) return;
+  if (!(usd >= SPOT_MIN_USD)) {
+    spotCarry.set(key, { fills: b.fills.slice(-500), until: Date.now() + CHASE_SEC * 1000 });
+    return;
+  }
   const wallet = db.getWallet(address);
   if (!wallet || !on(wallet, 'track_spot') || Number(wallet.is_active) !== 1) return;
   spotQuiet.set(key, Date.now() + CHASE_SEC * 1000);
@@ -185,6 +216,9 @@ function open(address) {
   };
   ws.onopen = () => {
     c.backoff = 1000;
+    // First connect: only events from now on. Reconnect: keep the old mark, so the snapshot HL sends on
+    // subscribe replays what happened while the socket was down (review: those transfers were lost).
+    c.mark = c.mark || Date.now();
     c.since = Date.now();
     c.lastMsg = Date.now();
     c.error = null;
@@ -216,10 +250,16 @@ function open(address) {
     const since = c.since || Date.now();
     if (d.channel === 'orderUpdates' && Array.isArray(d.data)) {
       for (const item of d.data) onItem(address, item, since);
-    } else if (d.channel === 'userFills' && d.data && !d.data.isSnapshot) {
-      for (const f of d.data.fills || []) onSpotFill(address, f, since);
-    } else if (d.channel === 'userNonFundingLedgerUpdates' && d.data && !d.data.isSnapshot) {
-      for (const u of d.data.nonFundingLedgerUpdates || []) onTransfer(address, u, since);
+    } else if (d.channel === 'userFills' && d.data) {
+      const items = d.data.fills || [];
+      const from = d.data.isSnapshot ? c.mark + 5000 : c.mark;   // snapshot: strictly after the mark
+      for (const f of items) onSpotFill(address, f, from);
+      c.mark = Math.max(c.mark, ...items.map(f => Number(f.time) || 0));
+    } else if (d.channel === 'userNonFundingLedgerUpdates' && d.data) {
+      const items = d.data.nonFundingLedgerUpdates || [];
+      const from = d.data.isSnapshot ? c.mark + 5000 : c.mark;
+      for (const u of items) onTransfer(address, u, from);
+      c.mark = Math.max(c.mark, ...items.map(u => Number(u.time) || 0));
     }
   };
   ws.onerror = (e) => {

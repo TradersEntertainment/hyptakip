@@ -397,7 +397,7 @@ async function notifyTransferAlert({ wallet, transfer, hash, time }) {
   const t = transfer;
   const amt = t.token === 'USDC' ? shortUsd(t.usd) : `${t.amount.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${esc(t.token)} (${shortUsd(t.usd)})`;
   const dest = t.to ? ` → ${shortAddr(t.to)}` : '';
-  const head = `💸 DIŞARI ${esc(t.kind).toUpperCase()} ${amt}${dest} · ${who}`;
+  const head = `💸 DIŞARI ${esc(t.kind.toLocaleUpperCase('tr-TR'))} ${amt}${dest} · ${who}`;
   const body = `
 <b>${head}</b>
 
