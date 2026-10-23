@@ -51,6 +51,13 @@ function initDb() {
   if (!cols.includes('track_orders')) {
     database.exec('ALTER TABLE wallets ADD COLUMN track_orders INTEGER DEFAULT 0');
   }
+  // spot fills / outgoing transfers (user 23.10): on by default for every wallet
+  if (!cols.includes('track_spot')) {
+    database.exec('ALTER TABLE wallets ADD COLUMN track_spot INTEGER DEFAULT 1');
+  }
+  if (!cols.includes('track_transfers')) {
+    database.exec('ALTER TABLE wallets ADD COLUMN track_transfers INTEGER DEFAULT 1');
+  }
 
   // Default settings
   const defaultSettings = [

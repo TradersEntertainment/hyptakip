@@ -355,7 +355,67 @@ async function notifyOrderAlert({ wallet, order }) {
   return await sendTelegramMessage(body, wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID);
 }
 
+/**
+ * 🪙 Spot fills batched per (coin, side) by orderstream.js. First line: side, pair, total $, avg price, who.
+ */
+async function notifySpotAlert({ wallet, fills }) {
+  const who = esc(wallet.label || shortAddr(wallet.address));
+  const coin = String(fills[0].coin || '');
+  const name = await spotName(coin);
+  const buy = fills[0].side === 'B';
+  let qty = 0, usd = 0, taker = 0, twap = false;
+  for (const f of fills) {
+    const q = Math.abs(parseFloat(f.sz || 0)), p = parseFloat(f.px || 0);
+    qty += q; usd += q * p;
+    if (f.crossed) taker += q * p;
+    if (f.twapId) twap = true;
+  }
+  const avg = qty ? usd / qty : 0;
+  const t0 = Math.min(...fills.map(f => Number(f.time) || Date.now()));
+  const head = `🪙 ${buy ? '🟢 SPOT ALIŞ' : '🔴 SPOT SATIŞ'} ${esc(name)} ${shortUsd(usd)} · ort. ${avg.toPrecision(6)}${twap ? ' · TWAP' : ''} · ${who}`;
+  const body = `
+<b>${head}</b>
+
+👤 <b>Balina:</b> ${who} (<code>${shortAddr(wallet.address)}</code>)
+🧾 <b>İşlem:</b> ${buy ? 'ALIŞ' : 'SATIŞ'} · ${qty.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${esc(name.split('/')[0])} · ${fills.length} dolum
+💵 <b>Tutar:</b> ${formatUsd(usd)} · piyasadan %${usd ? Math.round(taker / usd * 100) : 0}${twap ? ' · HL TWAP dilimi' : ''}
+⏱️ <b>Zaman:</b> ${new Date(t0).toLocaleString('tr-TR')}
+<i>Aynı çiftte aynı yönde ${Math.round((parseInt(process.env.ORDER_CHASE_SEC || '600', 10)) / 60)} dk boyunca sonraki dolumlar susturulur.</i>
+
+🔗 <a href="https://hypurrscan.io/address/${wallet.address}"><b>Hypurrscan'de İncele</b></a> | <a href="https://hyperdash.com/address/${wallet.address}">Hyperdash</a>
+  `.trim();
+  db.addAlert({ wallet_address: wallet.address, wallet_label: wallet.label, coin, alert_type: 'SPOT_TRADE',
+                message: body, details: { n: fills.length, usd, avg } });
+  return await sendTelegramMessage(body, wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID);
+}
+
+/**
+ * 💸 Money leaving the wallet (orderstream.outgoing). First line: kind, amount, destination, who.
+ */
+async function notifyTransferAlert({ wallet, transfer, hash, time }) {
+  const who = esc(wallet.label || shortAddr(wallet.address));
+  const t = transfer;
+  const amt = t.token === 'USDC' ? shortUsd(t.usd) : `${t.amount.toLocaleString('en-US', { maximumFractionDigits: 4 })} ${esc(t.token)} (${shortUsd(t.usd)})`;
+  const dest = t.to ? ` → ${shortAddr(t.to)}` : '';
+  const head = `💸 DIŞARI ${esc(t.kind).toUpperCase()} ${amt}${dest} · ${who}`;
+  const body = `
+<b>${head}</b>
+
+👤 <b>Balina:</b> ${who} (<code>${shortAddr(wallet.address)}</code>)
+🧾 <b>Hareket:</b> ${esc(t.kind)} · ${amt}
+${t.to ? `📍 <b>Hedef:</b> <a href="https://hypurrscan.io/address/${t.to}"><code>${t.to}</code></a>
+` : ''}⏱️ <b>Zaman:</b> ${new Date(Number(time) || Date.now()).toLocaleString('tr-TR')}
+
+🔗 ${hash ? `<a href="https://hypurrscan.io/tx/${hash}"><b>İşlemi gör</b></a> | ` : ''}<a href="https://hypurrscan.io/address/${wallet.address}">Hypurrscan</a>
+  `.trim();
+  db.addAlert({ wallet_address: wallet.address, wallet_label: wallet.label, coin: t.token, alert_type: 'TRANSFER_OUT',
+                message: body, details: { transfer: t, hash } });
+  return await sendTelegramMessage(body, wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID);
+}
+
 module.exports = {
+  notifySpotAlert,
+  notifyTransferAlert,
   notifyOrderAlert,
   sendTelegramMessage,
   sendTestMessage,

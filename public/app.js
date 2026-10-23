@@ -1062,7 +1062,9 @@ async function loadAlerts() {
         SIZE_CHANGE: '📈',
         CLOSED_POSITION: '🏁',
         LIQUIDATION_RISK: '🔥',
-        NEW_ORDER: '📝'
+        NEW_ORDER: '📝',
+        SPOT_TRADE: '🪙',
+        TRANSFER_OUT: '💸'
       };
 
       const typeLabels = {
@@ -1070,7 +1072,9 @@ async function loadAlerts() {
         SIZE_CHANGE: 'BOYUT DEĞİŞİMİ',
         CLOSED_POSITION: 'KAPATILDI',
         LIQUIDATION_RISK: 'LİKİDASYON RİSKİ',
-        NEW_ORDER: 'YENİ EMİR'
+        NEW_ORDER: 'YENİ EMİR',
+        SPOT_TRADE: 'SPOT İŞLEM',
+        TRANSFER_OUT: 'DIŞARI TRANSFER'
       };
 
       const timeStr = new Date(a.created_at).toLocaleString('tr-TR');
@@ -1283,6 +1287,8 @@ document.getElementById('btn-edit-selected-whale')?.addEventListener('click', ()
   document.getElementById('input-edit-threshold').value = selectedWallet.threshold_pct ?? 10;
   document.getElementById('input-edit-chatid').value = selectedWallet.telegram_chat_id || '';
   document.getElementById('input-edit-track-orders').checked = Number(selectedWallet.track_orders) === 1;
+  document.getElementById('input-edit-track-spot').checked = Number(selectedWallet.track_spot ?? 1) === 1;
+  document.getElementById('input-edit-track-transfers').checked = Number(selectedWallet.track_transfers ?? 1) === 1;
   editModal.classList.remove('hidden');
   if (window.lucide) lucide.createIcons();
   document.getElementById('input-edit-threshold').focus();
@@ -1306,7 +1312,9 @@ document.getElementById('form-edit-wallet')?.addEventListener('submit', async (e
         label: document.getElementById('input-edit-label').value.trim(),
         threshold_pct: document.getElementById('input-edit-threshold').value.trim(),  // sunucu çözer (parsePct)
         telegram_chat_id: document.getElementById('input-edit-chatid').value.trim() || null,
-        track_orders: document.getElementById('input-edit-track-orders').checked
+        track_orders: document.getElementById('input-edit-track-orders').checked,
+        track_spot: document.getElementById('input-edit-track-spot').checked,
+        track_transfers: document.getElementById('input-edit-track-transfers').checked
       })
     });
     const data = await res.json();

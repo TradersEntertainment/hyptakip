@@ -12,6 +12,14 @@
  *
  * Chase limits cancel and re-post the same order many times: only the first new order per (coin, side) is sent,
  * later ones are silent while the chase keeps going (each new order extends the quiet window, ORDER_CHASE_SEC).
+ *
+ * Same socket, two more streams (user 23.10: "spottan da bir şey yaparlarsa bildirim istiyorum ve dışarı transfer
+ * yaparlarsa da bildirim istiyorum"), per-wallet toggles track_spot / track_transfers (default on):
+ *  - userFills, spot coins only ('@N' or 'X/Y'): one order fills in many pieces, so fills per (coin, side) are
+ *    collected for SPOT_BATCH_SEC and sent as one alert; then quiet for ORDER_CHASE_SEC while buying continues.
+ *  - userNonFundingLedgerUpdates: only money leaving the wallet (withdraw to Arbitrum, send / spotTransfer /
+ *    internalTransfer to another address, sub-account transfer, vault deposit). perp↔spot moves are not "out".
+ * Snapshots (history sent on subscribe) are skipped.
  */
 const db = require('./db');
 const telegram = require('./telegram');
@@ -20,17 +28,109 @@ const URL = process.env.HYPERLIQUID_WS_URL || 'wss://api.hyperliquid.xyz/ws';
 const MAX_USERS = 10;
 const CHASE_SEC = parseInt(process.env.ORDER_CHASE_SEC || '600', 10);
 const MIN_USD = parseFloat(process.env.ORDER_ALERT_MIN_USD || '1000');
+const SPOT_MIN_USD = parseFloat(process.env.SPOT_ALERT_MIN_USD || '1000');
+const TRANSFER_MIN_USD = parseFloat(process.env.TRANSFER_ALERT_MIN_USD || '1000');
+const SPOT_BATCH_SEC = parseInt(process.env.SPOT_BATCH_SEC || '15', 10);
 const PING_MS = 30_000;
 const STALE_MS = PING_MS * 2 + 10_000;   // no message (pong included) for this long → half-open socket, reconnect
 
-const conns = new Map();          // address → { ws, timer, backoff, since, closed }
+const conns = new Map();          // address → { ws, timer, backoff, since, closed, subs }
 const lastAlert = new Map();      // address|coin|side → ms of the last order seen in this chase
-let stats = { sent: 0, quiet: 0, small: 0, reconnects: 0 };
+const spotBuf = new Map();        // address|coin|side → { fills: [], timer }
+const spotQuiet = new Map();      // address|coin|side → ms until which spot fills stay quiet
+let stats = { sent: 0, quiet: 0, small: 0, reconnects: 0, spot: 0, spotQuiet: 0, transfers: 0 };
 
+const on = (w, k) => w[k] === undefined || w[k] === null ? k !== 'track_orders' : Number(w[k]) === 1;
+
+/** Streams a wallet needs, e.g. "orders,spot,transfers" ('' = none). */
+function subsOf(w) {
+  return ['orders', 'spot', 'transfers'].filter(s => on(w, `track_${s}`)).join(',');
+}
+
+/** address → subs, at most MAX_USERS wallets (HL limit); order alerts first, then oldest wallets. */
 function wanted() {
-  return db.getActiveWallets()
-    .filter(w => Number(w.track_orders) === 1)
-    .slice(0, MAX_USERS);
+  const ws = db.getActiveWallets().filter(w => subsOf(w));
+  ws.sort((a, b) => (on(b, 'track_orders') - on(a, 'track_orders')) || String(a.created_at).localeCompare(String(b.created_at)));
+  return new Map(ws.slice(0, MAX_USERS).map(w => [w.address.toLowerCase(), subsOf(w)]));
+}
+
+const isSpot = coin => String(coin).startsWith('@') || String(coin).includes('/');
+
+/** One ledger update → outgoing transfer {kind, usd, token, amount, to} or null (incoming / internal / other). */
+function outgoing(address, upd) {
+  const d = upd?.delta || {};
+  const me = String(address).toLowerCase();
+  const from = String(d.user || '').toLowerCase();
+  const to = String(d.destination || '').toLowerCase();
+  const num = v => Math.abs(parseFloat(v || 0)) || 0;
+  switch (d.type) {
+    case 'withdraw':
+      return { kind: "çekim (Arbitrum'a)", usd: num(d.usdc), token: 'USDC', amount: num(d.usdc), to: null };
+    case 'internalTransfer':
+    case 'subAccountTransfer':
+      if (from !== me || !to || to === me) return null;
+      return { kind: d.type === 'subAccountTransfer' ? 'alt hesaba transfer' : 'başka adrese transfer (perp USDC)',
+               usd: num(d.usdc), token: 'USDC', amount: num(d.usdc), to };
+    case 'spotTransfer':
+    case 'send':
+      if (from !== me || !to || to === me) return null;
+      return { kind: d.type === 'send' ? 'başka adrese gönderim' : 'spot transfer', usd: num(d.usdcValue),
+               token: d.token || '?', amount: num(d.amount), to };
+    case 'vaultDeposit':
+      return { kind: "vault'a yatırma", usd: num(d.usdc), token: 'USDC', amount: num(d.usdc), to: String(d.vault || '').toLowerCase() || null };
+    default:
+      return null;
+  }
+}
+
+async function onTransfer(address, upd, since) {
+  if (Number(upd?.time || 0) < since - 5000) return;
+  const t = outgoing(address, upd);
+  if (!t || !(t.usd >= TRANSFER_MIN_USD)) return;
+  const wallet = db.getWallet(address);
+  if (!wallet || !on(wallet, 'track_transfers') || Number(wallet.is_active) !== 1) return;
+  stats.transfers++;
+  try {
+    await telegram.notifyTransferAlert({ wallet, transfer: t, hash: upd.hash, time: upd.time });
+  } catch (err) {
+    console.error('[Transfer] Bildirim hatası:', err.message);
+  }
+}
+
+/** Spot fill → batch per (coin, side); returns 'quiet' | 'batched' | 'skip'. */
+function onSpotFill(address, fill, since, nowMs = Date.now()) {
+  if (!fill || !isSpot(fill.coin) || Number(fill.time || 0) < since - 5000) return 'skip';
+  const key = `${address}|${fill.coin}|${fill.side}`;
+  if (nowMs < (spotQuiet.get(key) || 0)) {
+    spotQuiet.set(key, nowMs + CHASE_SEC * 1000);       // still buying/selling: stay quiet while it continues
+    stats.spotQuiet++;
+    return 'quiet';
+  }
+  let b = spotBuf.get(key);
+  if (!b) {
+    b = { fills: [] };
+    spotBuf.set(key, b);
+    b.timer = setTimeout(() => flushSpot(address, key), SPOT_BATCH_SEC * 1000);
+  }
+  b.fills.push(fill);
+  return 'batched';
+}
+
+async function flushSpot(address, key) {
+  const b = spotBuf.get(key);
+  spotBuf.delete(key);
+  if (!b || !b.fills.length) return;
+  const usd = b.fills.reduce((s, f) => s + Math.abs(parseFloat(f.sz || 0)) * parseFloat(f.px || 0), 0);
+  if (!(usd >= SPOT_MIN_USD)) return;
+  const wallet = db.getWallet(address);
+  if (!wallet || !on(wallet, 'track_spot') || Number(wallet.is_active) !== 1) return;
+  spotQuiet.set(key, Date.now() + CHASE_SEC * 1000);
+  stats.spot++;
+  try {
+    await telegram.notifySpotAlert({ wallet, fills: b.fills });
+  } catch (err) {
+    console.error('[Spot] Bildirim hatası:', err.message);
+  }
 }
 
 /** Decide alert / quiet for one orderUpdates item. Pure apart from lastAlert. Returns 'send' | 'quiet' | 'small' | 'skip'. */
@@ -52,7 +152,7 @@ async function onItem(address, item, since) {
   if (verdict === 'small') stats.small++;
   if (verdict !== 'send') return;
   const wallet = db.getWallet(address);
-  if (!wallet || Number(wallet.track_orders) !== 1 || Number(wallet.is_active) !== 1) return;
+  if (!wallet || !on(wallet, 'track_orders') || Number(wallet.is_active) !== 1) return;
   stats.sent++;
   try {
     await telegram.notifyOrderAlert({ wallet, order: item.order });
@@ -88,7 +188,11 @@ function open(address) {
     c.since = Date.now();
     c.lastMsg = Date.now();
     c.error = null;
-    ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'orderUpdates', user: address } }));
+    const subs = String(c.subs || '').split(',');
+    const types = { orders: 'orderUpdates', spot: 'userFills', transfers: 'userNonFundingLedgerUpdates' };
+    for (const s of subs) {
+      if (types[s]) ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: types[s], user: address } }));
+    }
     clearInterval(c.timer);
     c.timer = setInterval(() => {
       if (Date.now() - (c.lastMsg || 0) > STALE_MS) {         // half-open: pings get no pong, nothing arrives
@@ -97,7 +201,7 @@ function open(address) {
       }
       try { ws.send(JSON.stringify({ method: 'ping' })); } catch (e) { /* onLost reconnects */ }
     }, PING_MS);
-    console.log(`[Orders] Emir akışı açık: ${address}`);
+    console.log(`[Orders] Canlı akış açık: ${address} (${c.subs})`);
   };
   ws.onmessage = (m) => {
     c.lastMsg = Date.now();
@@ -109,8 +213,14 @@ function open(address) {
       console.error(`[Orders] HL hata (${address}):`, c.error);
       return;
     }
-    if (d.channel !== 'orderUpdates' || !Array.isArray(d.data)) return;
-    for (const item of d.data) onItem(address, item, c.since || Date.now());
+    const since = c.since || Date.now();
+    if (d.channel === 'orderUpdates' && Array.isArray(d.data)) {
+      for (const item of d.data) onItem(address, item, since);
+    } else if (d.channel === 'userFills' && d.data && !d.data.isSnapshot) {
+      for (const f of d.data.fills || []) onSpotFill(address, f, since);
+    } else if (d.channel === 'userNonFundingLedgerUpdates' && d.data && !d.data.isSnapshot) {
+      for (const u of d.data.nonFundingLedgerUpdates || []) onTransfer(address, u, since);
+    }
   };
   ws.onerror = (e) => {
     console.error(`[Orders] WebSocket hatası (${address}):`, e?.message || 'bilinmiyor');
@@ -137,15 +247,20 @@ function close(address) {
   conns.delete(address);
 }
 
-/** Open / close sockets to match the wallets that have track_orders on. Call after any wallet change. */
+/** Open / close sockets to match the wallets' toggles. Call after any wallet change. */
 function refresh() {
   if (typeof WebSocket === 'undefined') {
-    console.error('[Orders] Bu Node sürümünde WebSocket yok (Node 22+ gerekir) — emir bildirimi kapalı.');
+    console.error('[Orders] Bu Node sürümünde WebSocket yok (Node 22+ gerekir) — canlı bildirimler kapalı.');
     return;
   }
-  const want = new Set(wanted().map(w => w.address.toLowerCase()));
-  for (const a of [...conns.keys()]) if (!want.has(a)) close(a);
-  for (const a of want) if (!conns.has(a)) open(a);
+  const want = wanted();
+  for (const [a, c] of [...conns.entries()]) if (want.get(a) !== c.subs) close(a);   // gone or toggles changed
+  for (const [a, subs] of want) {
+    if (!conns.has(a)) {
+      conns.set(a, { backoff: 1000, closed: false, subs });
+      open(a);
+    }
+  }
 }
 
 function start() {
@@ -159,9 +274,11 @@ function stop() {
 
 function status() {
   return { connections: [...conns.entries()].map(([a, c]) => ({
-             address: a, open: c.ws?.readyState === 1 && !c.error, error: c.error || null,
+             address: a, subs: c.subs, open: c.ws?.readyState === 1 && !c.error, error: c.error || null,
              lastMsgAgoSec: c.lastMsg ? Math.round((Date.now() - c.lastMsg) / 1000) : null })),
-           maxUsers: MAX_USERS, chaseSec: CHASE_SEC, minUsd: MIN_USD, ...stats };
+           maxUsers: MAX_USERS, chaseSec: CHASE_SEC, minUsd: MIN_USD, spotMinUsd: SPOT_MIN_USD,
+           transferMinUsd: TRANSFER_MIN_USD, ...stats };
 }
 
-module.exports = { start, stop, refresh, status, classify, MAX_USERS, _lastAlert: lastAlert };
+module.exports = { start, stop, refresh, status, classify, outgoing, onSpotFill, subsOf, wanted, MAX_USERS,
+                   _lastAlert: lastAlert, _spotBuf: spotBuf, _spotQuiet: spotQuiet };

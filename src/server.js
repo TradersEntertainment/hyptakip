@@ -90,7 +90,7 @@ app.post('/api/wallets', async (req, res) => {
 app.put('/api/wallets/:address', (req, res) => {
   try {
     const { address } = req.params;
-    const { label, telegram_chat_id, threshold_pct, is_active, track_orders } = req.body;
+    const { label, telegram_chat_id, threshold_pct, is_active, track_orders, track_spot, track_transfers } = req.body;
 
     const fields = {};
     if (label !== undefined) fields.label = label.trim();
@@ -98,6 +98,8 @@ app.put('/api/wallets/:address', (req, res) => {
     if (threshold_pct !== undefined) fields.threshold_pct = db.parsePct(threshold_pct);
     if (is_active !== undefined) fields.is_active = is_active ? 1 : 0;
     if (track_orders !== undefined) fields.track_orders = track_orders ? 1 : 0;
+    if (track_spot !== undefined) fields.track_spot = track_spot ? 1 : 0;
+    if (track_transfers !== undefined) fields.track_transfers = track_transfers ? 1 : 0;
     if (fields.track_orders && ordersFull(address)) {
       return res.status(400).json({ success: false, error: `Emir bildirimi en çok ${orderstream.MAX_USERS} cüzdanda açılabilir (Hyperliquid sınırı).` });
     }
