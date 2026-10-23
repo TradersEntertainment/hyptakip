@@ -85,7 +85,7 @@
     'Metni Kopyala': 'Copy Text', 'PnL Kartı Oluştur ve Paylaş': 'Create and share a PnL card', 'Net Bakiye': 'Net Balance', 'PORTFÖY': 'PORTFOLIO',
     'GENEL KASA': 'TOTAL EQUITY',
     // whale card modal
-    'Görseli İndir': 'Download Image', 'Görseli Kopyala': 'Copy Image', 'Paylaş': 'Share', 'Adresi göster': 'Show address',
+    'Görseli İndir': 'Download Image', 'Görseli Kopyala': 'Copy Image', 'Paylaş': 'Share', 'Adresi göster': 'Show address', 'Karttaki isim': 'Name on card',
     'Paylaşmak için hazır görsel (1200×675). Dönemi seç, indir ya da kopyala.': 'Ready-to-share image (1200×675). Pick a period, then download or copy.',
     '24S': '24H', 'Karne Kartı': 'Track Record', '📸 Anlık Kart': '📸 Snapshot Card', '🏆 Karne Kartı': '🏆 Track Record Card', '7G': '7D', '30G': '30D',
     // alert type labels / toasts / confirms

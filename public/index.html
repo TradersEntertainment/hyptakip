@@ -928,10 +928,16 @@
           <button data-period="month" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">30G</button>
           <button data-period="allTime" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">Tümü</button>
         </div>
+        <div class="flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-2 text-[11px] text-slate-300">
+          <span>Karttaki isim</span>
+          <input id="whale-card-name" data-no-i18n type="text" maxlength="60" autocomplete="off" class="w-44 sm:w-56 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-white/10 focus:border-cyan-500/50 outline-none text-xs text-white">
+        </label>
         <label class="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer select-none">
           <input id="whale-card-show-address" type="checkbox" class="accent-cyan-400" checked>
           <span>Adresi göster</span>
         </label>
+        </div>
       </div>
       <canvas id="whale-card-canvas" width="1200" height="675" class="w-full h-auto rounded-xl border border-white/10 bg-[#050914]"></canvas>
       <div class="flex flex-wrap gap-2">

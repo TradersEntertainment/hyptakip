@@ -157,7 +157,7 @@
     const LX = 64;
     ctx.font = `800 42px ${FONT}`; ctx.fillStyle = '#fff';
     let name = d.label || 'Whale';
-    if (!d.showAddress) name = name.replace(/\(?\s*0x[0-9a-f]{3,}\S*\s*\)?/gi, '').trim() || 'Whale';
+    if (!d.showAddress && !d.customName) name = name.replace(/\(?\s*0x[0-9a-f]{3,}\S*\s*\)?/gi, '').trim() || 'Whale';
     ctx.fillText(fit(ctx, name, 560), LX, 172);
     ctx.font = `500 16px ${MONO}`; ctx.fillStyle = SLATE;
     const addr = d.showAddress ? `${d.address.slice(0, 6)}…${d.address.slice(-4)}` : t.hidden;
@@ -166,6 +166,31 @@
     const [tn, tf, tb, tbd] = tier(d.accountValue);
     pill(ctx, LX + aw + 14, 198, tn, tf, tb, tbd, 12);
 
+  }
+
+  // the rest of the coins in small print under the big chips: "SOL +$12K · HYPE −$3K · …", wrapped, "+N more" when out of room
+  function smallCoins(ctx, list, x, y, maxX, maxY) {
+    const LH = 18;
+    let cx = x, cy = y, i = 0;
+    for (; i < list.length; i++) {
+      const r = list[i];
+      const nm = coinName(r.name || r.coin), v = signed(r.net);
+      ctx.font = `700 12px ${FONT}`; const nw = ctx.measureText(nm + ' ').width;
+      ctx.font = `700 12px ${MONO}`; const vw = ctx.measureText(v).width;
+      const w = nw + vw + (cx > x ? 16 : 0);
+      if (cx + w > maxX) {
+        if (cy + LH > maxY) break;
+        cx = x; cy += LH;
+      }
+      if (cx > x) { ctx.font = `700 12px ${FONT}`; ctx.fillStyle = 'rgba(148,163,184,0.45)'; ctx.fillText('·', cx + 6, cy); cx += 16; }
+      ctx.font = `700 12px ${FONT}`; ctx.fillStyle = SLATE; ctx.fillText(nm + ' ', cx, cy); cx += nw;
+      ctx.font = `700 12px ${MONO}`; ctx.fillStyle = r.net >= 0 ? 'rgba(52,211,153,0.85)' : 'rgba(251,113,133,0.85)'; ctx.fillText(v, cx, cy); cx += vw;
+    }
+    if (i < list.length) {
+      const more = `+${list.length - i}`;
+      ctx.font = `700 12px ${FONT}`; ctx.fillStyle = DIM;
+      ctx.textAlign = 'right'; ctx.fillText(more, maxX, cy); ctx.textAlign = 'left';
+    }
   }
 
   // d = { label, address, showAddress, period, accountValue, positions, portfolio: {pnl, av, vlm} | null, coins: rows | null | 'loading' }
@@ -302,6 +327,8 @@
           ctx.font = `700 14px ${MONO}`; ctx.fillStyle = r.net >= 0 ? GREEN : RED;
           ctx.fillText(signed(r.net), cx + 10, y + 44);
         });
+        const shownSet = new Set(pick.slice(0, n));
+        smallCoins(ctx, rows.filter(r => !shownSet.has(r)), IX, y + 76, IR, PY + PH - 14);
       }
     }
 
@@ -418,7 +445,7 @@
         ctx.textAlign = 'right'; ctx.font = `800 17px ${MONO}`; ctx.fillStyle = color; ctx.fillText(v, IR, y + 28);
         if (sub) { const vw = ctx.measureText(v).width; ctx.font = `700 14px ${FONT}`; ctx.fillStyle = '#e2e8f0'; ctx.fillText(sub, IR - vw - 10, y + 28); }
         ctx.textAlign = 'left';
-        y += 52;
+        y += 48;
       };
       if (r.best) row(t.best, signed(r.best.pnl), GREEN, coinName(r.best.name || r.best.coin));
       if (r.worst) row(t.worst, signed(r.worst.pnl), RED, coinName(r.worst.name || r.worst.coin));
@@ -438,6 +465,8 @@
           ctx.font = `800 14px ${FONT}`; ctx.fillStyle = '#fff'; ctx.fillText(fit(ctx, coinName(x.name || x.coin), cw - 20), cx2 + 10, y + 19);
           ctx.font = `700 14px ${MONO}`; ctx.fillStyle = GREEN; ctx.fillText(signed(x.net), cx2 + 10, y + 38);
         });
+        const rest = (all.rows || []).filter(x => Math.abs(x.net) >= 1 && !top.includes(x)).sort((a, b) => b.net - a.net);
+        smallCoins(ctx, rest, IX, y + 68, IR, PY + PH - 12);
       }
     }
 
@@ -469,7 +498,7 @@
     if (state.kind === 'record') {
       const all = state.coins.allTime;
       drawRecord(el('whale-card-canvas'), {
-        label: w.label, address: w.address, showAddress: state.showAddress, accountValue: parseFloat(st.accountValue || 0),
+        label: state.customName || w.label, customName: !!state.customName, address: w.address, showAddress: state.showAddress, accountValue: parseFloat(st.accountValue || 0),
         periods: state.portfolio, all: all === undefined ? 'loading' : all,
       });
       return;
@@ -477,7 +506,7 @@
     const resp = state.coins[state.period];
     const coins = resp === undefined ? undefined : resp && resp.rows;
     draw(el('whale-card-canvas'), {
-      label: w.label, address: w.address, showAddress: state.showAddress, period: state.period,
+      label: state.customName || w.label, customName: !!state.customName, address: w.address, showAddress: state.showAddress, period: state.period,
       accountValue: parseFloat(st.accountValue || 0), positions: st.positions || [],
       portfolio: pf || null, coins: coins === undefined ? 'loading' : coins,
     });
@@ -527,6 +556,10 @@
               showAddress: state ? state.showAddress : true, kind: kind === 'record' ? 'record' : 'snap', portfolio: null, coins: {} };
     if (period && DAYS[period] !== undefined) state.period = period;
     el('whale-card-show-address').checked = state.showAddress;
+    // name on the card only (the wallet's own label is not changed); remembered per wallet in this browser
+    try { state.customName = localStorage.getItem('hyp_card_name_' + addr) || ''; } catch (e) { state.customName = ''; }
+    el('whale-card-name').value = state.customName;
+    el('whale-card-name').placeholder = w.label || '';
     el('btn-whale-card-share').classList.toggle('hidden', !(navigator.canShare && navigator.share));
     el('modal-whale-card').classList.remove('hidden');
     render();
@@ -547,6 +580,14 @@
       state.period = b.dataset.period; state.kind = 'snap'; render(); load();
     }));
     el('whale-card-show-address').addEventListener('change', e => { state.showAddress = e.target.checked; render(); });
+    el('whale-card-name').addEventListener('input', e => {
+      state.customName = e.target.value.trim().slice(0, 60);
+      try {
+        if (state.customName) localStorage.setItem('hyp_card_name_' + state.address, state.customName);
+        else localStorage.removeItem('hyp_card_name_' + state.address);
+      } catch (err) { /* storage blocked: still used for this card */ }
+      render();
+    });
     el('btn-whale-card-download').addEventListener('click', async () => {
       const b = await blob();
       const a = document.createElement('a');
