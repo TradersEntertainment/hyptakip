@@ -414,6 +414,7 @@ ${t.to ? `📍 <b>Hedef:</b> <a href="https://hypurrscan.io/address/${t.to}"><co
 }
 
 module.exports = {
+  spotName,
   notifySpotAlert,
   notifyTransferAlert,
   notifyOrderAlert,

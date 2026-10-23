@@ -145,6 +145,67 @@ app.get('/api/wallets/:address/portfolio', async (req, res) => {
   }
 });
 
+// 🪙 PnL per coin over the last N days: realized (fills' closedPnl) − fees, plus unrealized of open positions.
+// HL serves at most the ~10,000 most recent fills, so very active wallets may be covered for less than N days:
+// `coveredFrom` says from when. Cached 5 min (up to 10 requests of weight 20 per miss).
+const coinPnlCache = new Map();
+app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
+  try {
+    const address = String(req.params.address || '').toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(address)) return res.status(400).json({ success: false, error: 'Geçersiz adres' });
+    const days = [1, 7, 30].includes(Number(req.query.days)) ? Number(req.query.days) : 7;
+    const key = `${address}|${days}`;
+    const hit = coinPnlCache.get(key);
+    if (hit && Date.now() - hit.at < 300_000) return res.json({ success: true, ...hit.data });
+    const end = Date.now();
+    const start = end - days * 86_400_000;
+    const by = new Map();
+    let s = start, pages = 0, n = 0, oldest = null, capped = false;
+    while (pages < 10) {
+      const fills = await hyperliquid.postHyperliquid({ type: 'userFillsByTime', user: address, startTime: s, endTime: end, aggregateByTime: true }, 15000);
+      pages++;
+      if (!Array.isArray(fills) || !fills.length) break;
+      for (const f of fills) {
+        n++;
+        const t = Number(f.time) || 0;
+        if (oldest === null || t < oldest) oldest = t;
+        const c = by.get(f.coin) || { coin: f.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
+        c.realized += parseFloat(f.closedPnl || 0) || 0;
+        c.fees += parseFloat(f.fee || 0) || 0;
+        c.volume += Math.abs(parseFloat(f.sz || 0)) * (parseFloat(f.px || 0) || 0);
+        c.trades += 1;
+        by.set(f.coin, c);
+      }
+      if (fills.length < 2000) break;
+      s = Math.max(...fills.map(f => Number(f.time) || 0)) + 1;
+      if (pages === 10) capped = true;
+    }
+    // HL keeps only the ~10,000 most recent fills: near that count with the oldest fill well after `start`
+    // means the older part of the period is not available (a quiet wallet just has no older fills)
+    const truncated = capped || (oldest !== null && oldest - start > 3_600_000 && n >= 9000);
+    const st = tracker.getCachedState(address) || await hyperliquid.getClearinghouseState(address).catch(() => null);
+    for (const p of st?.positions || []) {
+      const c = by.get(p.coin) || { coin: p.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
+      c.unrealized = (c.unrealized || 0) + (parseFloat(p.unrealizedPnl) || 0);
+      by.set(p.coin, c);
+    }
+    const rows = [];
+    for (const c of by.values()) {
+      c.unrealized = c.unrealized || 0;
+      c.net = c.realized - c.fees + c.unrealized;
+      c.name = String(c.coin).startsWith('@') ? await telegram.spotName(c.coin) : c.coin;
+      rows.push(c);
+    }
+    rows.sort((a, b) => a.net - b.net);
+    const data = { days, rows, fills: n, coveredFrom: oldest, truncated, ts: Date.now() };
+    coinPnlCache.set(key, { at: Date.now(), data });
+    if (coinPnlCache.size > 300) coinPnlCache.delete(coinPnlCache.keys().next().value);
+    res.json({ success: true, ...data });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
 // Live order stream status
 app.get('/api/orders/status', (req, res) => {
   res.json({ success: true, ...orderstream.status() });
