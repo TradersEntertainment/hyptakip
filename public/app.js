@@ -556,7 +556,98 @@ async function selectWallet(wallet, fetchFills = true) {
   } else if (currentTab === 'alerts') {
     loadAlerts();
   }
+  if (fetchFills) loadPnlHistory();
 }
+
+// 📈 PnL history (HL portfolio): 24 Saat / 7 Gün / 30 Gün / Tümü
+let pnlHistChart = null;
+let pnlHistPeriod = 'week';
+let pnlHistData = { address: null, periods: null };
+
+function fmtUsdShort(v) {
+  const a = Math.abs(v), s = v < 0 ? '−' : '';
+  if (a >= 1e9) return `${s}$${(a / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `${s}$${(a / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `${s}$${(a / 1e3).toFixed(1)}K`;
+  return `${s}$${a.toFixed(0)}`;
+}
+
+async function loadPnlHistory() {
+  if (!selectedWallet) return;
+  const addr = selectedWallet.address.toLowerCase();
+  try {
+    const res = await fetch(`/api/wallets/${addr}/portfolio`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    if (!selectedWallet || selectedWallet.address.toLowerCase() !== addr) return;   // switched wallet meanwhile
+    pnlHistData = { address: addr, periods: data.periods || {} };
+  } catch (err) {
+    pnlHistData = { address: addr, periods: {} };
+  }
+  renderPnlHistory();
+}
+
+function renderPnlHistory() {
+  const canvas = document.getElementById('chart-pnl-history');
+  if (!canvas || typeof Chart === 'undefined') return;
+  document.querySelectorAll('#pnl-hist-tabs [data-period]').forEach(b => {
+    const on = b.dataset.period === pnlHistPeriod;
+    b.classList.toggle('bg-cyan-500/15', on); b.classList.toggle('text-cyan-300', on); b.classList.toggle('border-cyan-500/40', on);
+    b.classList.toggle('bg-slate-800', !on); b.classList.toggle('text-slate-300', !on);
+  });
+  const p = (pnlHistData.periods || {})[pnlHistPeriod];
+  const empty = !p || !p.pnl || p.pnl.length < 2;
+  document.getElementById('pnl-hist-empty').classList.toggle('hidden', !empty);
+  const sum = document.getElementById('pnl-hist-summary');
+  if (pnlHistChart) { pnlHistChart.destroy(); pnlHistChart = null; }
+  if (empty) { sum.textContent = ''; return; }
+  const last = p.pnl[p.pnl.length - 1][1];
+  const av0 = p.av.length ? p.av[0][1] : null, av1 = p.av.length ? p.av[p.av.length - 1][1] : null;
+  sum.innerHTML = `dönem K/Z <b class="${last >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${last >= 0 ? '+' : ''}${fmtUsdShort(last)}</b>`
+    + ` · hacim ${fmtUsdShort(p.vlm || 0)}` + (av0 !== null ? ` · bakiye ${fmtUsdShort(av0)} → ${fmtUsdShort(av1)}` : '');
+  const up = last >= 0;
+  const color = up ? '#10b981' : '#f43f5e';
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height || 220);
+  grad.addColorStop(0, up ? 'rgba(16,185,129,0.25)' : 'rgba(244,63,94,0.25)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  const day = pnlHistPeriod === 'day';
+  const fmtT = t => new Date(t).toLocaleString('tr-TR', day ? { hour: '2-digit', minute: '2-digit' } : { day: '2-digit', month: '2-digit', hour: pnlHistPeriod === 'week' ? '2-digit' : undefined });
+  const avAt = new Map(p.av.map(([t, v]) => [t, v]));
+  pnlHistChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: p.pnl.map(r => fmtT(r[0])),
+      datasets: [
+        { label: 'Kâr/Zarar', data: p.pnl.map(r => r[1]), borderColor: color, backgroundColor: grad, fill: true,
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, yAxisID: 'y' },
+        { label: 'Hesap değeri', data: p.pnl.map(r => avAt.get(r[0]) ?? null), borderColor: 'rgba(148,163,184,0.6)',
+          borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y2', spanGaps: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: 8, font: { family: 'JetBrains Mono', size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 }, callback: v => fmtUsdShort(v) } },
+        y2: { position: 'right', grid: { display: false }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, callback: v => fmtUsdShort(v) } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(10, 14, 26, 0.95)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, padding: 10,
+          titleFont: { family: 'JetBrains Mono', size: 11 }, bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y >= 0 && c.datasetIndex === 0 ? '+' : ''}${fmtUsdShort(c.parsed.y)}` }
+        }
+      }
+    }
+  });
+}
+
+document.querySelectorAll('#pnl-hist-tabs [data-period]').forEach(b => b.addEventListener('click', () => {
+  pnlHistPeriod = b.dataset.period;
+  renderPnlHistory();
+}));
 
 // Render Whale Metrics & Intelligence Profile
 function renderWhaleState(state) {

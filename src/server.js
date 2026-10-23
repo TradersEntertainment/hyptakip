@@ -121,6 +121,30 @@ function ordersFull(address) {
   return others.length >= orderstream.MAX_USERS;
 }
 
+// 📈 PnL / account value history (HL portfolio: day / week / month / allTime, spot included). Cached 60 s.
+const portfolioCache = new Map();
+app.get('/api/wallets/:address/portfolio', async (req, res) => {
+  try {
+    const address = String(req.params.address || '').toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(address)) return res.status(400).json({ success: false, error: 'Geçersiz adres' });
+    const hit = portfolioCache.get(address);
+    if (hit && Date.now() - hit.at < 60_000) return res.json({ success: true, ...hit.data });
+    const raw = await hyperliquid.postHyperliquid({ type: 'portfolio', user: address });
+    const periods = {};
+    for (const [k, v] of Array.isArray(raw) ? raw : []) {
+      if (!['day', 'week', 'month', 'allTime'].includes(k)) continue;
+      const num = rows => (rows || []).map(([t, x]) => [Number(t), parseFloat(x)]).filter(r => Number.isFinite(r[1]));
+      periods[k] = { pnl: num(v.pnlHistory), av: num(v.accountValueHistory), vlm: parseFloat(v.vlm || 0) || 0 };
+    }
+    const data = { periods, ts: Date.now() };
+    portfolioCache.set(address, { at: Date.now(), data });
+    if (portfolioCache.size > 200) portfolioCache.delete(portfolioCache.keys().next().value);
+    res.json({ success: true, ...data });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
 // Live order stream status
 app.get('/api/orders/status', (req, res) => {
   res.json({ success: true, ...orderstream.status() });
