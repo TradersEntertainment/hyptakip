@@ -145,7 +145,10 @@ app.get('/api/wallets/:address/portfolio', async (req, res) => {
   }
 });
 
-// 🪙 PnL per coin over the last N days: realized (fills' closedPnl) − fees, plus unrealized of open positions.
+// 🪙 PnL per coin over the last N days: realized (fills' closedPnl) − fees + funding = net for the period.
+// The open position's unrealized PnL is shown separately and NOT added: it is accumulated since the position was
+// opened, not over the period (user 23.10: "hesap tutmuyor"). `portfolioPnl` (HL's mark-to-market curve for the
+// same period) lets the page reconcile: chart = trades' net + change in value of open positions during the period.
 // HL serves at most the ~10,000 most recent fills, so very active wallets may be covered for less than N days:
 // `coveredFrom` says from when. Cached 5 min (up to 10 requests of weight 20 per miss).
 const coinPnlCache = new Map();
@@ -153,12 +156,13 @@ app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
   try {
     const address = String(req.params.address || '').toLowerCase();
     if (!/^0x[0-9a-f]{40}$/.test(address)) return res.status(400).json({ success: false, error: 'Geçersiz adres' });
-    const days = [1, 7, 30].includes(Number(req.query.days)) ? Number(req.query.days) : 7;
+    // days=0 → all time (user 23.10: "tümüne basınca tümü olmuyor 30da kalıyor")
+    const days = [0, 1, 7, 30].includes(Number(req.query.days)) ? Number(req.query.days) : 7;
     const key = `${address}|${days}`;
     const hit = coinPnlCache.get(key);
-    if (hit && Date.now() - hit.at < 300_000) return res.json({ success: true, ...hit.data });
+    if (hit && Date.now() - hit.at < (days ? 300_000 : 900_000)) return res.json({ success: true, ...hit.data });
     const end = Date.now();
-    const start = end - days * 86_400_000;
+    const start = days ? end - days * 86_400_000 : 0;
     const by = new Map();
     let s = start, pages = 0, n = 0, oldest = null, capped = false;
     while (pages < 10) {
@@ -181,8 +185,35 @@ app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
       if (pages === 10) capped = true;
     }
     // HL keeps only the ~10,000 most recent fills: near that count with the oldest fill well after `start`
-    // means the older part of the period is not available (a quiet wallet just has no older fills)
-    const truncated = capped || (oldest !== null && oldest - start > 3_600_000 && n >= 9000);
+    // means the older part of the period is not available (a quiet wallet just has no older fills).
+    // All time: `start` is 0, so only the count tells.
+    const truncated = capped || (oldest !== null && (days === 0 || oldest - start > 3_600_000) && n >= 9000);
+    // funding per coin (500 rows per page, oldest first)
+    let fs = start, fpages = 0, nFund = 0, fundingPartial = false;
+    while (fpages < 10) {
+      const rows = await hyperliquid.postHyperliquid({ type: 'userFunding', user: address, startTime: fs, endTime: end }, 15000);
+      fpages++;
+      if (!Array.isArray(rows) || !rows.length) break;
+      for (const r of rows) {
+        const d = r.delta || {};
+        if (d.type !== 'funding' || !d.coin) continue;
+        nFund++;
+        const c = by.get(d.coin) || { coin: d.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
+        c.funding = (c.funding || 0) + (parseFloat(d.usdc || 0) || 0);
+        by.set(d.coin, c);
+      }
+      if (rows.length < 500) break;
+      fs = Math.max(...rows.map(r => Number(r.time) || 0)) + 1;
+      if (fpages === 10) fundingPartial = true;   // 5000 hourly rows: older-first, so the newest part is missing
+    }
+    let portfolioPnl = null;
+    try {
+      const pk = { 0: 'allTime', 1: 'day', 7: 'week', 30: 'month' }[days];
+      const raw = await hyperliquid.postHyperliquid({ type: 'portfolio', user: address });
+      const per = (Array.isArray(raw) ? raw : []).find(([k]) => k === pk);
+      const h = per?.[1]?.pnlHistory || [];
+      if (h.length) portfolioPnl = parseFloat(h[h.length - 1][1]) - parseFloat(h[0][1]);
+    } catch (e) { /* reconciliation line is optional */ }
     const st = tracker.getCachedState(address) || await hyperliquid.getClearinghouseState(address).catch(() => null);
     for (const p of st?.positions || []) {
       const c = by.get(p.coin) || { coin: p.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
@@ -192,12 +223,14 @@ app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
     const rows = [];
     for (const c of by.values()) {
       c.unrealized = c.unrealized || 0;
-      c.net = c.realized - c.fees + c.unrealized;
+      c.funding = c.funding || 0;
+      c.net = c.realized - c.fees + c.funding;            // period only; unrealized shown apart
       c.name = String(c.coin).startsWith('@') ? await telegram.spotName(c.coin) : c.coin;
       rows.push(c);
     }
     rows.sort((a, b) => a.net - b.net);
-    const data = { days, rows, fills: n, coveredFrom: oldest, truncated, ts: Date.now() };
+    const data = { days, rows, fills: n, fundingRows: nFund, fundingPartial, coveredFrom: oldest, truncated, portfolioPnl,
+                   ts: Date.now() };
     coinPnlCache.set(key, { at: Date.now(), data });
     if (coinPnlCache.size > 300) coinPnlCache.delete(coinPnlCache.keys().next().value);
     res.json({ success: true, ...data });

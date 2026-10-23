@@ -393,15 +393,17 @@
                     <th class="text-left py-1.5 pr-2">Coin</th>
                     <th class="text-right py-1.5 px-2" title="Kapanan işlemlerin kâr/zararı (HL closedPnl)">Gerçekleşen</th>
                     <th class="text-right py-1.5 px-2">Ücret</th>
-                    <th class="text-right py-1.5 px-2" title="Şu an açık pozisyonun anlık kâr/zararı">Açık poz.</th>
-                    <th class="text-right py-1.5 px-2">Net</th>
+                    <th class="text-right py-1.5 px-2" title="Dönemde ödenen (−) / alınan (+) funding">Funding</th>
+                    <th class="text-right py-1.5 px-2" title="Gerçekleşen − ücret + funding (yalnız bu dönem)">Net (dönem)</th>
+                    <th class="text-right py-1.5 px-2" title="Şu an açık pozisyonun, açıldığından beri anlık kâr/zararı — döneme ait değil, toplama eklenmez">Açık poz. (şu an)</th>
                     <th class="text-right py-1.5 px-2">Hacim</th>
                     <th class="text-right py-1.5 pl-2">İşlem</th>
                   </tr>
                 </thead>
-                <tbody id="coin-pnl-body"><tr><td colspan="7" class="py-3 text-center text-slate-500">Yükleniyor…</td></tr></tbody>
+                <tbody id="coin-pnl-body"><tr><td colspan="8" class="py-3 text-center text-slate-500">Yükleniyor…</td></tr></tbody>
               </table>
             </div>
+            <p id="coin-pnl-recon" class="mt-2 text-[10px] font-mono text-slate-400"></p>
           </div>
         </div>
 

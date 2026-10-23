@@ -654,42 +654,57 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// 🪙 PnL per coin for the selected period (Tümü → last 30 days: HL keeps ~10k recent fills)
-const COIN_PNL_DAYS = { day: 1, week: 7, month: 30, allTime: 30 };
+// 🪙 PnL per coin for the selected period (Tümü = all time; HL keeps ~10k recent fills → the note says from when)
+const COIN_PNL_DAYS = { day: 1, week: 7, month: 30, allTime: 0 };
 let coinPnlSeq = 0;
 async function loadCoinPnl() {
   if (!selectedWallet) return;
   const addr = selectedWallet.address.toLowerCase();
-  const days = COIN_PNL_DAYS[pnlHistPeriod] || 7;
+  const days = COIN_PNL_DAYS[pnlHistPeriod] ?? 7;
   const body = document.getElementById('coin-pnl-body');
   const seq = ++coinPnlSeq;
-  document.getElementById('coin-pnl-period').textContent = `· son ${days === 1 ? '24 saat' : days + ' gün'}`;
+  const plabel = days === 0 ? 'tüm zaman' : days === 1 ? '24 saat' : days + ' gün';
+  document.getElementById('coin-pnl-period').textContent = days === 0 ? '· tüm zaman' : `· son ${plabel}`;
   document.getElementById('coin-pnl-note').textContent = '';
-  body.innerHTML = '<tr><td colspan="7" class="py-3 text-center text-slate-500">Yükleniyor…</td></tr>';
+  document.getElementById('coin-pnl-recon').textContent = '';
+  body.innerHTML = '<tr><td colspan="8" class="py-3 text-center text-slate-500">Yükleniyor…</td></tr>';
   let d;
   try {
     const res = await fetch(`/api/wallets/${addr}/coin-pnl?days=${days}`);
     d = await res.json();
     if (!d.success) throw new Error(d.error);
   } catch (err) {
-    if (seq === coinPnlSeq) body.innerHTML = `<tr><td colspan="7" class="py-3 text-center text-rose-400">Okunamadı: ${escapeHtml(err.message)}</td></tr>`;
+    if (seq === coinPnlSeq) body.innerHTML = `<tr><td colspan="8" class="py-3 text-center text-rose-400">Okunamadı: ${escapeHtml(err.message)}</td></tr>`;
     return;
   }
   if (seq !== coinPnlSeq) return;          // another wallet / period was picked meanwhile
   const money = v => `<span class="${v > 0 ? 'text-emerald-400' : v < 0 ? 'text-rose-400' : 'text-slate-500'}">${v > 0 ? '+' : ''}${fmtUsdShort(v)}</span>`;
   const rows = (d.rows || []).filter(r => r.trades || r.unrealized);
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="7" class="py-3 text-center text-slate-500">Bu dönemde işlem yok.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="py-3 text-center text-slate-500">Bu dönemde işlem yok.</td></tr>';
   } else {
     const tot = rows.reduce((a, r) => ({ realized: a.realized + r.realized, fees: a.fees + r.fees, unrealized: a.unrealized + r.unrealized,
-                                          net: a.net + r.net, volume: a.volume + r.volume, trades: a.trades + r.trades }),
-                            { realized: 0, fees: 0, unrealized: 0, net: 0, volume: 0, trades: 0 });
+                                          funding: a.funding + (r.funding || 0), net: a.net + r.net, volume: a.volume + r.volume,
+                                          trades: a.trades + r.trades }),
+                            { realized: 0, fees: 0, unrealized: 0, funding: 0, net: 0, volume: 0, trades: 0 });
+    // Reconcile with the chart (HL's mark-to-market for the same period): the rest is how much the open positions'
+    // value changed during the period (+ anything before the 10k-fill window when truncated)
+    const recon = document.getElementById('coin-pnl-recon');
+    if (d.portfolioPnl !== null && d.portfolioPnl !== undefined) {
+      const rest = d.portfolioPnl - tot.net;
+      recon.innerHTML = `HL portföy K/Z (${plabel}) ${money(d.portfolioPnl)} = işlemlerden net ${money(tot.net)}`
+        + ` + açık pozisyonların bu dönemdeki değer değişimi ${money(rest)}`
+        + (d.truncated || d.fundingPartial ? ' <span class="text-amber-300">(veri eksik: fark bunu da içerir)</span>' : '');
+    } else {
+      recon.textContent = '';
+    }
     const tr = (r, cls = '') => `<tr class="border-b border-white/5 ${cls}">
         <td class="py-1.5 pr-2 text-white font-bold">${escapeHtml(r.name || r.coin)}</td>
         <td class="text-right px-2">${money(r.realized)}</td>
         <td class="text-right px-2 text-slate-400">${fmtUsdShort(-r.fees)}</td>
-        <td class="text-right px-2">${r.unrealized ? money(r.unrealized) : '<span class="text-slate-600">—</span>'}</td>
+        <td class="text-right px-2">${r.funding ? money(r.funding) : '<span class="text-slate-600">—</span>'}</td>
         <td class="text-right px-2 font-bold">${money(r.net)}</td>
+        <td class="text-right px-2 opacity-80">${r.unrealized ? money(r.unrealized) : '<span class="text-slate-600">—</span>'}</td>
         <td class="text-right px-2 text-slate-400">${fmtUsdShort(r.volume)}</td>
         <td class="text-right pl-2 text-slate-400">${r.trades}</td></tr>`;
     body.innerHTML = rows.map(r => tr(r)).join('') + tr({ ...tot, name: 'TOPLAM' }, 'bg-white/5');
@@ -697,7 +712,7 @@ async function loadCoinPnl() {
   const from = d.coveredFrom ? new Date(d.coveredFrom).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
   document.getElementById('coin-pnl-note').textContent =
     (d.truncated && from ? `⚠️ HL yalnız son ~10.000 işlemi veriyor: veri ${from}'den itibaren · ` : '')
-    + `${d.fills} işlem kaydı` + (pnlHistPeriod === 'allTime' ? ' · Tümü için son 30 gün' : '');
+    + `${d.fills} işlem kaydı` + (d.fundingPartial ? ' · ⚠️ funding kısmi (çok uzun geçmiş)' : '');
 }
 
 // Render Whale Metrics & Intelligence Profile
@@ -943,7 +958,7 @@ function renderPositionsTable(positions) {
   if (positions.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="text-center py-16 text-slate-500 font-sans">
+        <td colspan="8" class="text-center py-16 text-slate-500 font-sans">
           <div class="flex flex-col items-center justify-center gap-2.5">
             <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-slate-600 border border-white/5">
               <i data-lucide="shield-check" class="w-5 h-5"></i>
@@ -1140,7 +1155,7 @@ document.getElementById('btn-open-share-card')?.addEventListener('click', () => 
 async function loadFills() {
   if (!selectedWallet) return;
   const tbody = document.getElementById('fills-table-body');
-  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500 font-sans">İşlemler yükleniyor...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-500 font-sans">İşlemler yükleniyor...</td></tr>`;
 
   try {
     const res = await fetch(`/api/wallets/${selectedWallet.address}/fills`);
@@ -1149,7 +1164,7 @@ async function loadFills() {
 
     const fills = data.fills || [];
     if (fills.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500 font-sans">Son işlem geçmişi bulunamadı.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-500 font-sans">Son işlem geçmişi bulunamadı.</td></tr>`;
       return;
     }
 
@@ -1176,7 +1191,7 @@ async function loadFills() {
       `;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-rose-400 font-sans">İşlem geçmişi alınamadı: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-rose-400 font-sans">İşlem geçmişi alınamadı: ${err.message}</td></tr>`;
   }
 }
 
