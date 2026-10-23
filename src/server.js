@@ -7,6 +7,8 @@ const orderstream = require('./orderstream');
 const hyperliquid = require('./hyperliquid');
 const telegram = require('./telegram');
 const tracker = require('./tracker');
+const pnldata = require('./pnldata');
+const botcmd = require('./botcmd');
 
 const app = express();
 
@@ -122,24 +124,11 @@ function ordersFull(address) {
 }
 
 // 📈 PnL / account value history (HL portfolio: day / week / month / allTime, spot included). Cached 60 s.
-const portfolioCache = new Map();
 app.get('/api/wallets/:address/portfolio', async (req, res) => {
   try {
     const address = String(req.params.address || '').toLowerCase();
     if (!/^0x[0-9a-f]{40}$/.test(address)) return res.status(400).json({ success: false, error: 'Geçersiz adres' });
-    const hit = portfolioCache.get(address);
-    if (hit && Date.now() - hit.at < 60_000) return res.json({ success: true, ...hit.data });
-    const raw = await hyperliquid.postHyperliquid({ type: 'portfolio', user: address });
-    const periods = {};
-    for (const [k, v] of Array.isArray(raw) ? raw : []) {
-      if (!['day', 'week', 'month', 'allTime'].includes(k)) continue;
-      const num = rows => (rows || []).map(([t, x]) => [Number(t), parseFloat(x)]).filter(r => Number.isFinite(r[1]));
-      periods[k] = { pnl: num(v.pnlHistory), av: num(v.accountValueHistory), vlm: parseFloat(v.vlm || 0) || 0 };
-    }
-    const data = { periods, ts: Date.now() };
-    portfolioCache.set(address, { at: Date.now(), data });
-    if (portfolioCache.size > 200) portfolioCache.delete(portfolioCache.keys().next().value);
-    res.json({ success: true, ...data });
+    res.json({ success: true, ...(await pnldata.getPortfolio(address)) });
   } catch (err) {
     res.status(502).json({ success: false, error: err.message });
   }
@@ -151,100 +140,21 @@ app.get('/api/wallets/:address/portfolio', async (req, res) => {
 // same period) lets the page reconcile: chart = trades' net + change in value of open positions during the period.
 // HL serves at most the ~10,000 most recent fills, so very active wallets may be covered for less than N days:
 // `coveredFrom` says from when. Cached 5 min (up to 10 requests of weight 20 per miss).
-const coinPnlCache = new Map();
 app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
   try {
     const address = String(req.params.address || '').toLowerCase();
     if (!/^0x[0-9a-f]{40}$/.test(address)) return res.status(400).json({ success: false, error: 'Geçersiz adres' });
     // days=0 → all time (user 23.10: "tümüne basınca tümü olmuyor 30da kalıyor")
     const days = [0, 1, 7, 30].includes(Number(req.query.days)) ? Number(req.query.days) : 7;
-    const key = `${address}|${days}`;
-    const hit = coinPnlCache.get(key);
-    if (hit && Date.now() - hit.at < (days ? 300_000 : 900_000)) return res.json({ success: true, ...hit.data });
-    const end = Date.now();
-    const start = days ? end - days * 86_400_000 : 0;
-    const by = new Map();
-    let s = start, pages = 0, n = 0, oldest = null, capped = false;
-    // track record: closing fills (closedPnl ≠ 0) counted as wins / losses, plus the biggest single win / loss
-    const rec = { wins: 0, losses: 0, best: null, worst: null };
-    while (pages < 10) {
-      const fills = await hyperliquid.postHyperliquid({ type: 'userFillsByTime', user: address, startTime: s, endTime: end, aggregateByTime: true }, 15000);
-      pages++;
-      if (!Array.isArray(fills) || !fills.length) break;
-      for (const f of fills) {
-        n++;
-        const t = Number(f.time) || 0;
-        if (oldest === null || t < oldest) oldest = t;
-        const c = by.get(f.coin) || { coin: f.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
-        c.realized += parseFloat(f.closedPnl || 0) || 0;
-        c.fees += parseFloat(f.fee || 0) || 0;
-        c.volume += Math.abs(parseFloat(f.sz || 0)) * (parseFloat(f.px || 0) || 0);
-        c.trades += 1;
-        by.set(f.coin, c);
-        const cp = parseFloat(f.closedPnl || 0) || 0;
-        if (cp > 0) rec.wins++; else if (cp < 0) rec.losses++;
-        if (cp > 0 && (!rec.best || cp > rec.best.pnl)) rec.best = { coin: f.coin, pnl: cp, time: t };
-        if (cp < 0 && (!rec.worst || cp < rec.worst.pnl)) rec.worst = { coin: f.coin, pnl: cp, time: t };
-      }
-      if (fills.length < 2000) break;
-      s = Math.max(...fills.map(f => Number(f.time) || 0)) + 1;
-      if (pages === 10) capped = true;
-    }
-    // HL keeps only the ~10,000 most recent fills: near that count with the oldest fill well after `start`
-    // means the older part of the period is not available (a quiet wallet just has no older fills).
-    // All time: `start` is 0, so only the count tells.
-    const truncated = capped || (oldest !== null && (days === 0 || oldest - start > 3_600_000) && n >= 9000);
-    // funding per coin (500 rows per page, oldest first)
-    let fs = start, fpages = 0, nFund = 0, fundingPartial = false;
-    while (fpages < 10) {
-      const rows = await hyperliquid.postHyperliquid({ type: 'userFunding', user: address, startTime: fs, endTime: end }, 15000);
-      fpages++;
-      if (!Array.isArray(rows) || !rows.length) break;
-      for (const r of rows) {
-        const d = r.delta || {};
-        if (d.type !== 'funding' || !d.coin) continue;
-        nFund++;
-        const c = by.get(d.coin) || { coin: d.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
-        c.funding = (c.funding || 0) + (parseFloat(d.usdc || 0) || 0);
-        by.set(d.coin, c);
-      }
-      if (rows.length < 500) break;
-      fs = Math.max(...rows.map(r => Number(r.time) || 0)) + 1;
-      if (fpages === 10) fundingPartial = true;   // 5000 hourly rows: older-first, so the newest part is missing
-    }
-    let portfolioPnl = null;
-    try {
-      const pk = { 0: 'allTime', 1: 'day', 7: 'week', 30: 'month' }[days];
-      const raw = await hyperliquid.postHyperliquid({ type: 'portfolio', user: address });
-      const per = (Array.isArray(raw) ? raw : []).find(([k]) => k === pk);
-      const h = per?.[1]?.pnlHistory || [];
-      if (h.length) portfolioPnl = parseFloat(h[h.length - 1][1]) - parseFloat(h[0][1]);
-    } catch (e) { /* reconciliation line is optional */ }
-    const st = tracker.getCachedState(address) || await hyperliquid.getClearinghouseState(address).catch(() => null);
-    for (const p of st?.positions || []) {
-      const c = by.get(p.coin) || { coin: p.coin, realized: 0, fees: 0, volume: 0, trades: 0 };
-      c.unrealized = (c.unrealized || 0) + (parseFloat(p.unrealizedPnl) || 0);
-      by.set(p.coin, c);
-    }
-    const rows = [];
-    for (const c of by.values()) {
-      c.unrealized = c.unrealized || 0;
-      c.funding = c.funding || 0;
-      c.net = c.realized - c.fees + c.funding;            // period only; unrealized shown apart
-      c.name = String(c.coin).startsWith('@') ? await telegram.spotName(c.coin) : c.coin;
-      rows.push(c);
-    }
-    rows.sort((a, b) => a.net - b.net);
-    for (const x of [rec.best, rec.worst]) if (x) x.name = String(x.coin).startsWith('@') ? await telegram.spotName(x.coin) : x.coin;
-    const data = { days, rows, fills: n, fundingRows: nFund, fundingPartial, coveredFrom: oldest, truncated, portfolioPnl, record: rec,
-                   ts: Date.now() };
-    coinPnlCache.set(key, { at: Date.now(), data });
-    if (coinPnlCache.size > 300) coinPnlCache.delete(coinPnlCache.keys().next().value);
+    const { closes, ...data } = await pnldata.getCoinPnl(address, days);   // closes: only for the /pnl report
     res.json({ success: true, ...data });
   } catch (err) {
     res.status(502).json({ success: false, error: err.message });
   }
 });
+
+// 🤖 /pnl Telegram command status
+app.get('/api/botcmd/status', (req, res) => res.json({ success: true, ...botcmd.status() }));
 
 // Live order stream status
 app.get('/api/orders/status', (req, res) => {
@@ -413,6 +323,7 @@ const server = app.listen(config.PORT, () => {
   console.log(`📡 Port: http://localhost:${config.PORT}`);
   console.log(`💾 Veritabanı Yolu: ${config.DB_PATH}`);
   console.log(`=========================================`);
+  botcmd.start();
 });
 
 // Graceful shutdown
@@ -420,6 +331,7 @@ function shutdown() {
   console.log('[Server] Kapatılıyor...');
   tracker.stopTracker();
   orderstream.stop();
+  botcmd.stop();
   server.close(() => {
     process.exit(0);
   });

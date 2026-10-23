@@ -16,7 +16,7 @@
       data: 'Veri: Hyperliquid', hidden: 'adres gizli',
       rec: 'TÜM ZAMANLAR KARNESİ', total: 'TOPLAM KÂR / ZARAR · TÜM ZAMANLAR', since: 'İlk kayıt', totalVol: 'Toplam hacim',
       card: 'KARNE', winRate: 'Kârlı kapanış', wl: (w, l) => `${w} kârlı · ${l} zararlı`, lastN: n => `son ${n} işlem`,
-      best: 'En büyük kazanç', worst: 'En büyük kayıp', peak: 'Zirve hesap değeri', topCoins: 'EN ÇOK KAZANDIRAN COINLER',
+      best: 'En büyük kazanç', worst: 'En büyük kayıp', maxDd: 'Max düşüş', peak: 'Zirve hesap değeri', topCoins: 'EN ÇOK KAZANDIRAN COINLER',
       tiles: { day: '24 SAAT', week: '7 GÜN', month: '30 GÜN' },
     },
     en: {
@@ -27,7 +27,7 @@
       data: 'Data: Hyperliquid', hidden: 'address hidden',
       rec: 'ALL-TIME TRACK RECORD', total: 'TOTAL PnL · ALL TIME', since: 'Since', totalVol: 'Total volume',
       card: 'TRACK RECORD', winRate: 'Winning closes', wl: (w, l) => `${w} wins · ${l} losses`, lastN: n => `last ${n} trades`,
-      best: 'Biggest win', worst: 'Biggest loss', peak: 'Peak account value', topCoins: 'TOP EARNING COINS',
+      best: 'Biggest win', worst: 'Biggest loss', maxDd: 'Max DD', peak: 'Peak account value', topCoins: 'TOP EARNING COINS',
       tiles: { day: '24 HOURS', week: '7 DAYS', month: '30 DAYS' },
     },
   };
@@ -436,7 +436,17 @@
       ctx.lineCap = 'butt'; ctx.lineWidth = 1;
       ctx.font = `800 20px ${FONT}`; ctx.fillStyle = '#fff'; ctx.fillText(t.winRate, IX + 130, cy - 10);
       ctx.font = `600 15px ${MONO}`; ctx.fillStyle = SLATE; ctx.fillText(t.wl(r.wins, r.losses), IX + 130, cy + 16);
-      if (all.truncated) { ctx.font = `600 12px ${FONT}`; ctx.fillStyle = DIM; ctx.fillText(t.lastN(all.fills), IX + 130, cy + 38); }
+      // Sharpe / Sortino / max drawdown (server: pnldata.ratios) next to the win rate (user 23.10)
+      const q = d.ratios || {};
+      const parts = [];
+      if (Number.isFinite(q.sharpe)) parts.push(`Sharpe ${q.sharpe.toFixed(2)}`);
+      if (Number.isFinite(q.sortino)) parts.push(`Sortino ${q.sortino.toFixed(2)}`);
+      const line2 = [];
+      if (Number.isFinite(q.maxDdPct)) line2.push(`${t.maxDd} ${q.maxDdPct.toFixed(1)}%`);
+      if (all.truncated) line2.push(t.lastN(all.fills));
+      ctx.font = `700 13px ${MONO}`; ctx.fillStyle = '#a5f3fc';
+      if (parts.length) ctx.fillText(fit(ctx, parts.join(' · '), IR - IX - 130), IX + 130, cy + 40);
+      if (line2.length) { ctx.fillStyle = '#fda4af'; ctx.fillText(fit(ctx, line2.join(' · '), IR - IX - 130), IX + 130, cy + 58); }
       y = cy + R + 26;
 
       const row = (k, v, color, sub) => {
@@ -499,7 +509,7 @@
       const all = state.coins.allTime;
       drawRecord(el('whale-card-canvas'), {
         label: state.customName || w.label, customName: !!state.customName, showLogo: state.showLogo, address: w.address, showAddress: state.showAddress, accountValue: parseFloat(st.accountValue || 0),
-        periods: state.portfolio, all: all === undefined ? 'loading' : all,
+        periods: state.portfolio, ratios: state.ratios, all: all === undefined ? 'loading' : all,
       });
       return;
     }
@@ -524,6 +534,7 @@
         const r = await (await fetch(`/api/wallets/${addr}/portfolio`)).json();
         if (state.address !== addr) return;
         state.portfolio = r.success ? (r.periods || {}) : {};
+        state.ratios = r.success ? (r.ratios || null) : null;
       } catch (e) { if (state.address !== addr) return; state.portfolio = {}; }
       if (state.address !== addr) return;
       render();

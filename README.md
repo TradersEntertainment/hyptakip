@@ -67,6 +67,23 @@ Bot token ve varsayılan bildirim kanalı **web sitesinden değil, doğrudan Rai
    - `TELEGRAM_DEFAULT_CHAT_ID`: Grubunuzun veya sohbetinizin ID'si
 7. Sitedeki **"Ayarlar"** penceresini açıp **"Railway Telegram Bağlantısını Test Et"** butonuna basarak entegrasyonu anında doğrulayabilirsiniz!
 
+### 📊 `/pnl` — detaylı K/Z raporu (Telegram)
+
+Gruba `/pnl` yazınca bot, cüzdanın detaylı kâr/zarar raporunu **5 görsellik bir albüm** olarak yollar:
+1. **Özet:** toplam değer (perp+spot), perp hesabı, çekilebilir, açık pozisyon, kaldıraç, açık K/Z; 24 saat / 7 gün / 30 gün / tüm zaman K/Z, getiri, hacim, bakiye; 30 gün ve tüm zaman grafikleri
+2. **Karne:** kârlı kapanış oranı, ortalamalar, en büyük kazanç / kayıp, toplam gerçekleşen / ücret / funding; **oranlar** (Sharpe, Sortino, en büyük düşüş $ ve %, toparlanma, kâr/zarar oranı, kazanç/kayıp boyu, günlük oynaklık); son 30 günün günlük K/Z çubukları
+3. **Açık pozisyonlar:** her pozisyonun kaldıraç, büyüklük, giriş / mark / liq, liq uzaklığı, K/Z, ROE, teminat, funding; pozisyon payları ve teminat özeti
+4. **Coin dökümü:** coin başına 7 gün / 30 gün / tüm zaman net, gerçekleşen, ücret, funding, hacim, işlem
+5. **Son kapanışlar:** en yeni 18 kapanış (aynı emrin dolumları tek satır)
+
+Kullanım: `/pnl` (tek cüzdan varsa onu, birden çoksa düğmelerle seçtirir) · `/pnl 2` (listede 2.) · `/pnl propr` (adında geçen) · `/pnl 0xabc` (adres başı) · sona `en` eklenirse İngilizce.
+
+**Açmak için** Railway Variables'a `TELEGRAM_COMMANDS=1` ekleyin. Komutu okumak için bot Telegram'dan mesajları çeker
+(getUpdates); bunu bir bot token'ı için **tek bir program** yapabilir. Aynı token başka bir bot programında da komut
+okuyorsa ikisi çakışır: bu durumda HYPTAKIP kendiliğinden geri çekilir ve `/api/botcmd/status` hatayı gösterir. Bot
+yalnız bilinen sohbetlere cevap verir (varsayılan Chat ID, cüzdanların Chat ID'leri ve isteğe bağlı
+`PNL_ALLOWED_CHAT_IDS`, virgülle).
+
 ---
 
 ## 🚂 Railway Dağıtımı & Kalıcı Hafıza (Persistent Volume)
