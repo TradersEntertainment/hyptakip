@@ -165,6 +165,8 @@ app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
     const start = days ? end - days * 86_400_000 : 0;
     const by = new Map();
     let s = start, pages = 0, n = 0, oldest = null, capped = false;
+    // track record: closing fills (closedPnl ≠ 0) counted as wins / losses, plus the biggest single win / loss
+    const rec = { wins: 0, losses: 0, best: null, worst: null };
     while (pages < 10) {
       const fills = await hyperliquid.postHyperliquid({ type: 'userFillsByTime', user: address, startTime: s, endTime: end, aggregateByTime: true }, 15000);
       pages++;
@@ -179,6 +181,10 @@ app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
         c.volume += Math.abs(parseFloat(f.sz || 0)) * (parseFloat(f.px || 0) || 0);
         c.trades += 1;
         by.set(f.coin, c);
+        const cp = parseFloat(f.closedPnl || 0) || 0;
+        if (cp > 0) rec.wins++; else if (cp < 0) rec.losses++;
+        if (cp > 0 && (!rec.best || cp > rec.best.pnl)) rec.best = { coin: f.coin, pnl: cp, time: t };
+        if (cp < 0 && (!rec.worst || cp < rec.worst.pnl)) rec.worst = { coin: f.coin, pnl: cp, time: t };
       }
       if (fills.length < 2000) break;
       s = Math.max(...fills.map(f => Number(f.time) || 0)) + 1;
@@ -229,7 +235,8 @@ app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
       rows.push(c);
     }
     rows.sort((a, b) => a.net - b.net);
-    const data = { days, rows, fills: n, fundingRows: nFund, fundingPartial, coveredFrom: oldest, truncated, portfolioPnl,
+    for (const x of [rec.best, rec.worst]) if (x) x.name = String(x.coin).startsWith('@') ? await telegram.spotName(x.coin) : x.coin;
+    const data = { days, rows, fills: n, fundingRows: nFund, fundingPartial, coveredFrom: oldest, truncated, portfolioPnl, record: rec,
                    ts: Date.now() };
     coinPnlCache.set(key, { at: Date.now(), data });
     if (coinPnlCache.size > 300) coinPnlCache.delete(coinPnlCache.keys().next().value);

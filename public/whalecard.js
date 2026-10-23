@@ -14,6 +14,10 @@
       account: 'Hesap', volume: 'Hacim', open: 'AÇIK POZİSYONLAR', none: 'Açık pozisyon yok',
       more: n => `+${n} pozisyon daha`, coins: 'DÖNEMİN COINLERİ', loading: 'yükleniyor…', noData: 'Bu dönem için veri yok',
       data: 'Veri: Hyperliquid', hidden: 'adres gizli',
+      rec: 'TÜM ZAMANLAR KARNESİ', total: 'TOPLAM KÂR / ZARAR · TÜM ZAMANLAR', since: 'İlk kayıt', totalVol: 'Toplam hacim',
+      card: 'KARNE', winRate: 'Kârlı kapanış', wl: (w, l) => `${w} kârlı · ${l} zararlı`, lastN: n => `son ${n} işlem`,
+      best: 'En büyük kazanç', worst: 'En büyük kayıp', peak: 'Zirve hesap değeri', topCoins: 'EN ÇOK KAZANDIRAN COINLER',
+      tiles: { day: '24 SAAT', week: '7 GÜN', month: '30 GÜN' },
     },
     en: {
       tagline: 'Hyperliquid Whale Radar', pnl: 'PERIOD PnL',
@@ -21,6 +25,10 @@
       account: 'Account', volume: 'Volume', open: 'OPEN POSITIONS', none: 'No open positions',
       more: n => `+${n} more`, coins: 'COINS THIS PERIOD', loading: 'loading…', noData: 'No data for this period',
       data: 'Data: Hyperliquid', hidden: 'address hidden',
+      rec: 'ALL-TIME TRACK RECORD', total: 'TOTAL PnL · ALL TIME', since: 'Since', totalVol: 'Total volume',
+      card: 'TRACK RECORD', winRate: 'Winning closes', wl: (w, l) => `${w} wins · ${l} losses`, lastN: n => `last ${n} trades`,
+      best: 'Biggest win', worst: 'Biggest loss', peak: 'Peak account value', topCoins: 'TOP EARNING COINS',
+      tiles: { day: '24 HOURS', week: '7 DAYS', month: '30 DAYS' },
     },
   };
 
@@ -135,20 +143,13 @@
     return true;
   }
 
-  // d = { label, address, showAddress, period, accountValue, positions, portfolio: {pnl, av, vlm} | null, coins: rows | null | 'loading' }
-  function draw(canvas, d) {
-    const t = TXT[lang()];
-    canvas.width = W; canvas.height = H;
-    const ctx = canvas.getContext('2d');
-    background(ctx);
-    logo(ctx, t);
-
+  function head(ctx, t, d, ptxt, gold) {
     // top right: period + timestamp
     const now = new Date().toLocaleString(lang() === 'en' ? 'en-GB' : 'tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     ctx.font = `800 14px ${FONT}`;
-    const ptxt = t.period[d.period] || '';
     const pw = ctx.measureText(ptxt).width + 20;
-    pill(ctx, W - 56 - pw, 62, ptxt, '#a5f3fc', 'rgba(34,211,238,0.12)', 'rgba(34,211,238,0.5)', 14);
+    if (gold) pill(ctx, W - 56 - pw, 62, ptxt, '#fde68a', 'rgba(245,158,11,0.14)', 'rgba(245,158,11,0.55)', 14);
+    else pill(ctx, W - 56 - pw, 62, ptxt, '#a5f3fc', 'rgba(34,211,238,0.12)', 'rgba(34,211,238,0.5)', 14);
     ctx.font = `500 13px ${MONO}`; ctx.fillStyle = DIM; ctx.textAlign = 'right';
     ctx.fillText(now, W - 56, 100); ctx.textAlign = 'left';
 
@@ -164,6 +165,19 @@
     const aw = ctx.measureText(addr).width;
     const [tn, tf, tb, tbd] = tier(d.accountValue);
     pill(ctx, LX + aw + 14, 198, tn, tf, tb, tbd, 12);
+
+  }
+
+  // d = { label, address, showAddress, period, accountValue, positions, portfolio: {pnl, av, vlm} | null, coins: rows | null | 'loading' }
+  function draw(canvas, d) {
+    const t = TXT[lang()];
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    background(ctx);
+    logo(ctx, t);
+
+    const LX = 64;
+    head(ctx, t, d, t.period[d.period] || '');
 
     // big PnL
     const p = d.portfolio;
@@ -299,6 +313,141 @@
     ctx.textAlign = 'left';
   }
 
+  function label(ctx, text, x, y, color = SLATE) {
+    ctx.font = `800 13px ${FONT}`; ctx.fillStyle = color;
+    if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '1.5px';
+    ctx.fillText(text, x, y);
+    if (ctx.letterSpacing !== undefined) ctx.letterSpacing = '0px';
+  }
+
+  // 🏆 Track record card. d = { label, address, showAddress, accountValue, periods: {day,week,month,allTime} | null,
+  //                             all: coin-pnl response for all time | null | 'loading' }
+  function drawRecord(canvas, d) {
+    const t = TXT[lang()];
+    const loc = lang() === 'en' ? 'en-GB' : 'tr-TR';
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    background(ctx);
+    logo(ctx, t);
+    head(ctx, t, d, t.rec, true);
+    const LX = 64;
+    const per = d.periods || {};
+    const last = p => (p && p.pnl && p.pnl.length >= 2 ? p.pnl[p.pnl.length - 1][1] : null);
+    const at = per.allTime;
+    const total = last(at);
+    const up = total === null || total >= 0;
+
+    label(ctx, t.total, LX, 262);
+    ctx.save();
+    ctx.font = `900 84px ${FONT}`;
+    if (total === null) { ctx.fillStyle = DIM; ctx.fillText('—', LX, 342); }
+    else {
+      const g = ctx.createLinearGradient(LX, 270, LX, 345);
+      g.addColorStop(0, up ? '#fde68a' : '#fda4af'); g.addColorStop(0.45, up ? '#6ee7b7' : '#fb7185'); g.addColorStop(1, up ? '#10b981' : '#e11d48');
+      ctx.shadowColor = up ? 'rgba(16,185,129,0.55)' : 'rgba(244,63,94,0.55)'; ctx.shadowBlur = 34;
+      ctx.fillStyle = g; ctx.fillText(fit(ctx, signed(total), 580), LX, 342);
+    }
+    ctx.restore();
+    ctx.font = `600 17px ${FONT}`;
+    let sx = LX;
+    const stat = (k, v) => {
+      ctx.font = `600 17px ${FONT}`; ctx.fillStyle = DIM; ctx.fillText(k + ' ', sx, 380); sx += ctx.measureText(k + ' ').width;
+      ctx.fillStyle = '#e2e8f0'; ctx.font = `700 17px ${MONO}`; ctx.fillText(v, sx, 380); sx += ctx.measureText(v).width + 22;
+    };
+    if (at && at.pnl && at.pnl.length) stat(t.since, new Date(at.pnl[0][0]).toLocaleDateString(loc, { day: '2-digit', month: 'short', year: 'numeric' }));
+    if (at && at.vlm) stat(t.totalVol, short(at.vlm));
+
+    // 24h / 7d / 30d tiles
+    const keys = ['day', 'week', 'month'];
+    const tw = (556 - 2 * 14) / 3;
+    keys.forEach((k, i) => {
+      const x = LX + i * (tw + 14), y = 404, v = last(per[k]);
+      rr(ctx, x, y, tw, 70, 14);
+      ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fill();
+      ctx.strokeStyle = v === null ? 'rgba(255,255,255,0.08)' : v >= 0 ? 'rgba(16,185,129,0.35)' : 'rgba(244,63,94,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.font = `800 12px ${FONT}`; ctx.fillStyle = DIM; ctx.fillText(t.tiles[k], x + 14, y + 25);
+      ctx.font = `800 22px ${MONO}`; ctx.fillStyle = v === null ? DIM : v >= 0 ? GREEN : RED;
+      ctx.fillText(v === null ? '—' : fit(ctx, signed(v), tw - 28), x + 14, y + 55);
+    });
+
+    // all-time curve
+    if (!sparkline(ctx, at && at.pnl && at.pnl.length >= 2 ? at.pnl : null, LX, 494, 556, 100, up)) {
+      ctx.font = `600 16px ${FONT}`; ctx.fillStyle = DIM; ctx.fillText(t.noData, LX, 550);
+    }
+
+    // right panel: track record
+    const PX = 668, PY = 128, PW = 476, PH = 470;
+    rr(ctx, PX, PY, PW, PH, 22);
+    ctx.fillStyle = 'rgba(255,255,255,0.035)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(245,158,11,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+    const IX = PX + 26, IR = PX + PW - 26;
+    label(ctx, t.card, IX, PY + 38, '#fcd34d');
+    const all = d.all;
+    if (all === 'loading' || !all) {
+      ctx.font = `600 15px ${FONT}`; ctx.fillStyle = DIM; ctx.fillText(all === 'loading' ? t.loading : t.noData, IX, PY + 80);
+    } else {
+      const r = all.record || { wins: 0, losses: 0 };
+      const n = r.wins + r.losses;
+      let y = PY + 60;
+      // win ring
+      const cx = IX + 56, cy = y + 58, R = 48;
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 11; ctx.stroke();
+      if (n) {
+        const wr = r.wins / n;
+        if (wr > 0) {
+          const rg = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+          rg.addColorStop(0, '#22d3ee'); rg.addColorStop(1, '#34d399');
+          ctx.save(); ctx.shadowColor = 'rgba(52,211,153,0.6)'; ctx.shadowBlur = 12;
+          ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + wr * Math.PI * 2); ctx.strokeStyle = rg; ctx.stroke(); ctx.restore();
+        }
+        ctx.textAlign = 'center'; ctx.font = `900 24px ${MONO}`; ctx.fillStyle = '#fff';
+        ctx.fillText(`${Math.round(wr * 100)}%`, cx, cy + 8); ctx.textAlign = 'left';
+      } else {
+        ctx.textAlign = 'center'; ctx.font = `900 24px ${MONO}`; ctx.fillStyle = DIM; ctx.fillText('—', cx, cy + 8); ctx.textAlign = 'left';
+      }
+      ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+      ctx.font = `800 20px ${FONT}`; ctx.fillStyle = '#fff'; ctx.fillText(t.winRate, IX + 130, cy - 10);
+      ctx.font = `600 15px ${MONO}`; ctx.fillStyle = SLATE; ctx.fillText(t.wl(r.wins, r.losses), IX + 130, cy + 16);
+      if (all.truncated) { ctx.font = `600 12px ${FONT}`; ctx.fillStyle = DIM; ctx.fillText(t.lastN(all.fills), IX + 130, cy + 38); }
+      y = cy + R + 26;
+
+      const row = (k, v, color, sub) => {
+        rr(ctx, IX - 10, y, IR - IX + 20, 44, 12); ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fill();
+        ctx.font = `600 15px ${FONT}`; ctx.fillStyle = SLATE; ctx.fillText(k, IX, y + 28);
+        ctx.textAlign = 'right'; ctx.font = `800 17px ${MONO}`; ctx.fillStyle = color; ctx.fillText(v, IR, y + 28);
+        if (sub) { const vw = ctx.measureText(v).width; ctx.font = `700 14px ${FONT}`; ctx.fillStyle = '#e2e8f0'; ctx.fillText(sub, IR - vw - 10, y + 28); }
+        ctx.textAlign = 'left';
+        y += 52;
+      };
+      if (r.best) row(t.best, signed(r.best.pnl), GREEN, coinName(r.best.name || r.best.coin));
+      if (r.worst) row(t.worst, signed(r.worst.pnl), RED, coinName(r.worst.name || r.worst.coin));
+      const av = at && at.av && at.av.length ? Math.max(...at.av.map(x => x[1])) : null;
+      if (av !== null && isFinite(av)) row(t.peak, short(av), '#e2e8f0');
+
+      const top = (all.rows || []).filter(x => x.net >= 1).sort((a, b) => b.net - a.net).slice(0, 3);
+      if (top.length && PY + PH - y >= 80) {
+        y += 14;
+        label(ctx, t.topCoins, IX, y);
+        y += 14;
+        const cw = (IR - IX - (top.length - 1) * 10) / top.length;
+        top.forEach((x, i) => {
+          const cx2 = IX + i * (cw + 10);
+          rr(ctx, cx2, y, cw, 46, 12);
+          ctx.fillStyle = 'rgba(16,185,129,0.09)'; ctx.fill(); ctx.strokeStyle = 'rgba(16,185,129,0.3)'; ctx.stroke();
+          ctx.font = `800 14px ${FONT}`; ctx.fillStyle = '#fff'; ctx.fillText(fit(ctx, coinName(x.name || x.coin), cw - 20), cx2 + 10, y + 19);
+          ctx.font = `700 14px ${MONO}`; ctx.fillStyle = GREEN; ctx.fillText(signed(x.net), cx2 + 10, y + 38);
+        });
+      }
+    }
+
+    ctx.font = `600 13px ${FONT}`; ctx.fillStyle = DIM;
+    ctx.fillText(t.data, LX, H - 40);
+    ctx.textAlign = 'right'; ctx.font = `700 14px ${MONO}`; ctx.fillStyle = CYAN;
+    ctx.fillText(location.host || 'hyptakip', W - 56, H - 40);
+    ctx.textAlign = 'left';
+  }
+
   // ---- modal wiring ----
   let state = null;   // { address, label, period, showAddress, portfolio: {period: data}, coins: {period: rows} }
 
@@ -310,7 +459,23 @@
     if (!w || w.address.toLowerCase() !== state.address) return;
     const st = w.state || {};
     const pf = state.portfolio ? state.portfolio[state.period] : null;
-    const coins = state.coins[state.period];
+    const kindOn = k => document.querySelectorAll('#whale-card-kinds [data-kind]').forEach(b => {
+      const on = b.dataset.kind === k;
+      b.classList.toggle('bg-cyan-500/15', on); b.classList.toggle('text-cyan-300', on); b.classList.toggle('border-cyan-500/40', on);
+      b.classList.toggle('text-slate-300', !on);
+    });
+    kindOn(state.kind);
+    el('whale-card-periods').classList.toggle('invisible', state.kind === 'record');
+    if (state.kind === 'record') {
+      const all = state.coins.allTime;
+      drawRecord(el('whale-card-canvas'), {
+        label: w.label, address: w.address, showAddress: state.showAddress, accountValue: parseFloat(st.accountValue || 0),
+        periods: state.portfolio, all: all === undefined ? 'loading' : all,
+      });
+      return;
+    }
+    const resp = state.coins[state.period];
+    const coins = resp === undefined ? undefined : resp && resp.rows;
     draw(el('whale-card-canvas'), {
       label: w.label, address: w.address, showAddress: state.showAddress, period: state.period,
       accountValue: parseFloat(st.accountValue || 0), positions: st.positions || [],
@@ -324,7 +489,7 @@
   }
 
   async function load() {
-    const addr = state.address, period = state.period;
+    const addr = state.address, period = state.kind === 'record' ? 'allTime' : state.period;
     if (!state.portfolio) {
       try {
         const r = await (await fetch(`/api/wallets/${addr}/portfolio`)).json();
@@ -338,9 +503,9 @@
       try {
         const r = await (await fetch(`/api/wallets/${addr}/coin-pnl?days=${DAYS[period]}`)).json();
         if (state.address !== addr) return;
-        state.coins[period] = r.success ? (r.rows || []) : null;
+        state.coins[period] = r.success ? r : null;
       } catch (e) { if (state.address === addr) state.coins[period] = null; }
-      if (state.period === period) render();
+      if ((state.kind === 'record' ? 'allTime' : state.period) === period) render();
     }
   }
 
@@ -350,16 +515,16 @@
   function fileName() {
     const w = window.selectedWalletForCard();
     const base = String((w && w.label) || 'whale').replace(/[^\w-]+/g, '_').slice(0, 40) || 'whale';
-    return `hyptakip_${base}_${state.period}.png`;
+    return `hyptakip_${base}_${state.kind === 'record' ? 'karne' : state.period}.png`;
   }
 
-  function open(period) {
+  function open(period, kind) {
     const w = window.selectedWalletForCard && window.selectedWalletForCard();
     if (!w) return;
     const addr = w.address.toLowerCase();
     // keep the picked period / address toggle, but always refetch so the numbers match the timestamp on the card
     state = { address: addr, period: state && state.address === addr ? state.period : 'month',
-              showAddress: state ? state.showAddress : true, portfolio: null, coins: {} };
+              showAddress: state ? state.showAddress : true, kind: kind === 'record' ? 'record' : 'snap', portfolio: null, coins: {} };
     if (period && DAYS[period] !== undefined) state.period = period;
     el('whale-card-show-address').checked = state.showAddress;
     el('btn-whale-card-share').classList.toggle('hidden', !(navigator.canShare && navigator.share));
@@ -372,10 +537,14 @@
   function init() {
     if (!el('modal-whale-card')) return;
     el('btn-open-whale-card')?.addEventListener('click', () => open(window.currentPnlPeriodForCard && window.currentPnlPeriodForCard()));
+    el('btn-open-record-card')?.addEventListener('click', () => open(null, 'record'));
+    document.querySelectorAll('#whale-card-kinds [data-kind]').forEach(b => b.addEventListener('click', () => {
+      state.kind = b.dataset.kind; render(); load();
+    }));
     el('btn-whale-card-close').addEventListener('click', () => el('modal-whale-card').classList.add('hidden'));
     el('modal-whale-card').addEventListener('click', e => { if (e.target.id === 'modal-whale-card') e.target.classList.add('hidden'); });
     document.querySelectorAll('#whale-card-periods [data-period]').forEach(b => b.addEventListener('click', () => {
-      state.period = b.dataset.period; render(); load();
+      state.period = b.dataset.period; state.kind = 'snap'; render(); load();
     }));
     el('whale-card-show-address').addEventListener('change', e => { state.showAddress = e.target.checked; render(); });
     el('btn-whale-card-download').addEventListener('click', async () => {
@@ -403,6 +572,6 @@
     document.addEventListener('hyp:lang', () => { if (!el('modal-whale-card').classList.contains('hidden')) render(); });
   }
 
-  window.HypWhaleCard = { draw, open, refresh: () => state && render() };
+  window.HypWhaleCard = { draw, drawRecord, open, refresh: () => state && render() };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

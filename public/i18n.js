@@ -87,7 +87,7 @@
     // whale card modal
     'Görseli İndir': 'Download Image', 'Görseli Kopyala': 'Copy Image', 'Paylaş': 'Share', 'Adresi göster': 'Show address',
     'Paylaşmak için hazır görsel (1200×675). Dönemi seç, indir ya da kopyala.': 'Ready-to-share image (1200×675). Pick a period, then download or copy.',
-    '24S': '24H', '7G': '7D', '30G': '30D',
+    '24S': '24H', 'Karne Kartı': 'Track Record', '📸 Anlık Kart': '📸 Snapshot Card', '🏆 Karne Kartı': '🏆 Track Record Card', '7G': '7D', '30G': '30D',
     // alert type labels / toasts / confirms
     'YENİ POZİSYON': 'NEW POSITION', 'BOYUT DEĞİŞİMİ': 'SIZE CHANGE', 'POZİSYON KAPANDI': 'POSITION CLOSED', 'YÖN DEĞİŞTİ': 'SIDE FLIPPED',
     'YENİ EMİR': 'NEW ORDER', 'SPOT İŞLEM': 'SPOT TRADE', 'DIŞARI TRANSFER': 'OUTGOING TRANSFER', 'LİKİDASYON YAKIN': 'NEAR LIQUIDATION',
