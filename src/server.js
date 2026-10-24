@@ -173,6 +173,12 @@ app.post('/api/evm-wallets', (req, res) => {
     res.json({ success: true, wallet: w });
   } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
+app.get('/api/evm-wallets/:address/overview', async (req, res) => {
+  try {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(req.params.address)) return res.status(400).json({ success: false, error: 'Geçersiz Ethereum adresi' });
+    res.json({ success: true, ...(await evmwatch.overview(req.params.address)) });
+  } catch (err) { res.status(502).json({ success: false, error: err.message }); }
+});
 app.delete('/api/evm-wallets/:address', (req, res) => {
   try { db.deleteEvmWallet(req.params.address); res.json({ success: true }); }
   catch (err) { res.status(500).json({ success: false, error: err.message }); }

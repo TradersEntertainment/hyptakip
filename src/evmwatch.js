@@ -155,4 +155,39 @@ function start() {
 }
 function stop() { if (timer) clearTimeout(timer); timer = null; status.running = false; }
 
-module.exports = { start, stop, tick, status: () => ({ ...status, pollSec: POLL_SEC, wallets: db.getEvmWallets().length }), fromToken, fromTx };
+// 🔎 Wallet page (user 24.10: "arthur hayesi seçip bakamıyorum elinde ne var"): ETH + priced ERC-20 balances,
+// and the newest real transfers (same spam filter as the alerts). Cached 60 s. DeFi positions (Aave, staking
+// contracts, Pendle PT…) are not balances of the address and do not show up here.
+const overviewCache = new Map();
+async function overview(address) {
+  const me = String(address).toLowerCase();
+  const hit = overviewCache.get(me);
+  if (hit && Date.now() - hit.at < 60_000) return hit.data;
+  const [info, toks, tt, txs] = await Promise.all([
+    get(`/addresses/${me}`), get(`/addresses/${me}/tokens?type=ERC-20`),
+    get(`/addresses/${me}/token-transfers`), get(`/addresses/${me}/transactions`),
+  ]);
+  const px = parseFloat(info.exchange_rate) || await ethUsd().catch(() => null);
+  const eth = Number(BigInt(info.coin_balance || '0')) / 1e18;
+  const tokens = [];
+  let unpriced = 0;
+  for (const it of toks.items || []) {
+    const t = it.token || {};
+    if (!t.exchange_rate || t.reputation === 'scam' || !/^[\x20-\x7E]{1,15}$/.test(String(t.symbol || '').trim())) { unpriced++; continue; }
+    const amount = Number(BigInt(it.value || '0')) / 10 ** Number(t.decimals ?? 18);
+    const value = amount * parseFloat(t.exchange_rate);
+    if (value < 1) continue;
+    tokens.push({ symbol: String(t.symbol).trim(), name: t.name, address: t.address_hash || t.address, amount, price: parseFloat(t.exchange_rate), usd: value, icon: t.icon_url || null });
+  }
+  if (eth > 0) tokens.push({ symbol: 'ETH', name: 'Ether', address: null, amount: eth, price: px, usd: px ? eth * px : 0, icon: null });
+  tokens.sort((a, b) => b.usd - a.usd);
+  const recent = [...(tt.items || []).map(it => fromToken(it, me)), ...(txs.items || []).map(it => fromTx(it, me, px))]
+    .filter(x => x && x.usd >= 10).sort((a, b) => (a.ts < b.ts ? 1 : -1)).slice(0, 40);   // 1-token "test" transfers hidden
+  const tags = ((info.metadata && info.metadata.tags) || []).map(t => t.name);
+  const data = { address: me, tags, total: tokens.reduce((s, x) => s + x.usd, 0), tokens, unpriced, recent, ts: Date.now() };
+  overviewCache.set(me, { at: Date.now(), data });
+  if (overviewCache.size > 50) overviewCache.delete(overviewCache.keys().next().value);
+  return data;
+}
+
+module.exports = { overview, start, stop, tick, status: () => ({ ...status, pollSec: POLL_SEC, wallets: db.getEvmWallets().length }), fromToken, fromTx };
