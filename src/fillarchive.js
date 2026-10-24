@@ -71,6 +71,7 @@ function hours(address, days = 0) {
   const grid = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ n: 0, v: 0 })));
   const byHour = Array.from({ length: 24 }, () => ({ n: 0, v: 0 })), byDow = Array.from({ length: 7 }, () => ({ n: 0, v: 0 }));
   const daysSeen = new Set();
+  const slots = new Set();                                   // "YYYY-MM-DD|h" with at least one order
   let o = null, orders = 0, vol = 0;
   const flush = () => {
     if (!o) return;
@@ -78,6 +79,7 @@ function hours(address, days = 0) {
     const h = d.getUTCHours(), w = (d.getUTCDay() + 6) % 7;   // 0 = Monday
     for (const c of [grid[w][h], byHour[h], byDow[w]]) { c.n++; c.v += o.v; }
     daysSeen.add(d.toISOString().slice(0, 10));
+    slots.add(`${d.toISOString().slice(0, 10)}|${h}`);
     orders++; vol += o.v;
   };
   for (const r of rows) {
@@ -92,10 +94,84 @@ function hours(address, days = 0) {
   let acc = 0;
   for (const x of order) { if (!vol || acc >= vol * 0.8 || !x.v) break; core.push(x.h); acc += x.v; }
   const quiet = byHour.map((c, h) => ({ h, v: c.v })).filter(x => vol && x.v / vol < 0.005).map(x => x.h);
+  const rest = restWindow(rows.length ? rows[0].time : null, rows.length ? rows[rows.length - 1].time : null, slots, byHour, vol);
   return {
+    rest,
     address: a, from: rows.length ? rows[0].time : null, to: rows.length ? rows[rows.length - 1].time : null,
     fills: rows.length, orders, volume: vol, activeDays: daysSeen.size,
     grid, byHour, byDow, core: ranges(core), coreShare: vol ? acc / vol : 0, quiet: ranges(quiet),
+  };
+}
+
+// 😴 Estimated rest (sleep) window — user (24.10): "tahmini hangi saatlerde uyuduğunu da sitede göster, tüm cüzdanlara
+// uygun bir formül bulup". The longest unbroken circular stretch of hours (TSİ, 4–16 h) that holds at most 3% of the
+// wallet's orders and 3% of its volume is the rest window. Its middle is taken as ~03:00 local time to guess a time zone. Confidence
+// from the number of covered days and how many days the window was really empty. Measured, not known: bots and
+// other wallets can trade while the owner sleeps, so it is shown as "tahmini".
+const ZONES = [
+  [-8, 'ABD batı yakası (LA)'], [-7, 'ABD batı / dağ'], [-6, 'ABD orta'], [-5, 'ABD doğu yakası (New York)'],
+  [-4, 'ABD doğu yakası (New York)'], [-3, 'Güney Amerika (Brezilya / Arjantin)'], [0, 'Londra / Batı Avrupa'],
+  [1, 'Orta Avrupa'], [2, 'Doğu Avrupa'], [3, 'Türkiye / Moskova / Körfez'], [4, 'Dubai'], [5, 'Pakistan'],
+  [6, 'Orta Asya'], [7, 'Tayland / Vietnam'], [8, 'Singapur / Hong Kong / Çin'], [9, 'Kore / Japonya'], [10, 'Doğu Avustralya'],
+];
+function restWindow(from, to, slots, byHour, vol) {
+  if (!from || !to || !vol) return null;
+  const H = 3600_000;
+  const covered = Array(24).fill(0), active = Array(24).fill(0);
+  for (let t = Math.ceil(from / H) * H; t + H <= to; t += H) {      // hour slots fully inside the archived range
+    const d = new Date(t + TZ_OFF), h = d.getUTCHours();
+    covered[h]++;
+    if (slots.has(`${d.toISOString().slice(0, 10)}|${h}`)) active[h]++;
+  }
+  const days = Math.min(...covered);
+  if (days < 2) return { status: 'az', days };
+  // longest circular window (4–16 h) holding ≤ 3% of the orders AND ≤ 3% of the volume (a stray order or two does not
+  // break it); among equally long windows the emptiest one
+  const totN = byHour.reduce((t, c) => t + c.n, 0);
+  let best = { start: -1, len: 0, share: 1 };
+  for (let len = 16; len >= 4 && best.len === 0; len--) {
+    for (let st = 0; st < 24; st++) {
+      let n = 0, v = 0;
+      for (let i = 0; i < len; i++) { const c = byHour[(st + i) % 24]; n += c.n; v += c.v; }
+      const sh = Math.max(n / totN, v / vol);
+      if (n / totN <= 0.03 && v / vol <= 0.03 && (best.len === 0 || sh < best.share)) best = { start: st, len, share: sh };
+    }
+  }
+  if (best.len < 4) return { status: 'yok', days, note: 'günün her saatinde işlem var, 4 saatten uzun sessiz aralık yok (otomatik işlem olabilir)' };
+  const hrs = Array.from({ length: best.len }, (_, i) => (best.start + i) % 24);
+  // how many covered days had no order at all in the window
+  const empty = (() => {
+    const perDay = new Map();
+    for (let t = Math.ceil(from / H) * H; t + H <= to; t += H) {
+      const d = new Date(t + TZ_OFF), h = d.getUTCHours();
+      if (!hrs.includes(h)) continue;
+      // the window may cross midnight: count it on the day it starts
+      const startDay = new Date(t + TZ_OFF - ((h - best.start + 24) % 24) * H).toISOString().slice(0, 10);
+      const e = perDay.get(startDay) || { n: 0, act: false };
+      e.n++; if (slots.has(`${d.toISOString().slice(0, 10)}|${h}`)) e.act = true;
+      perDay.set(startDay, e);
+    }
+    const full = [...perDay.values()].filter(e => e.n === best.len);
+    return { days: full.length, empty: full.filter(e => !e.act).length };
+  })();
+  const mid = (best.start + best.len / 2) % 24;                     // TSİ hour of the window's middle
+  // window middle ≈ 03:00 local time → UTC offset = 3 − (mid − 3); sleep habits vary by ±1 h, so zones within 1 h of
+  // that are all named (e.g. −3.5 → "ABD doğu yakası (New York) / Güney Amerika")
+  let raw = 6 - mid;
+  while (raw > 12) raw -= 24;
+  while (raw < -11) raw += 24;
+  const near = ZONES.filter(z => Math.abs(z[0] - raw) <= 1).sort((x, y) => Math.abs(x[0] - raw) - Math.abs(y[0] - raw));
+  const names = [...new Set(near.map(z => z[1]))].slice(0, 2);
+  const zone = names.length ? names.join(' / ') : 'bilinmiyor';
+  const off = Math.round(raw);
+  const share = empty.days ? empty.empty / empty.days : 0;
+  const conf = days >= 14 && share >= 0.8 ? 'yüksek' : days >= 7 && share >= 0.6 ? 'orta' : 'düşük';
+  const p = h => String(((h % 24) + 24) % 24).padStart(2, '0') + ':00';
+  const ny = h => p(h - 7);                                        // New York: EDT (UTC−4) = TSİ − 7
+  return {
+    status: 'ok', days, start: best.start, hours: best.len, label: `${p(best.start)}–${p(best.start + best.len)}`,
+    ny: `${ny(best.start)}–${ny(best.start + best.len)}`, utcOffset: off, zone, confidence: conf,
+    emptyDays: empty.empty, windowDays: empty.days,
   };
 }
 

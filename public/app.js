@@ -1719,7 +1719,10 @@ function renderHours() {
   };
   const val = c => (k === 'v' ? fmtUsdShort(c.v) : `${c.n} işlem`);
   let html = '<div class="grid gap-[3px]" style="grid-template-columns:2.6rem repeat(24,minmax(0,1fr)) 4.2rem">';
-  html += '<div></div>' + Array.from({ length: 24 }, (_, h) => `<div class="text-[0.5625rem] text-slate-500 text-center font-mono">${String(h).padStart(2, '0')}</div>`).join('') + '<div></div>';
+  const rest = d.rest && d.rest.status === 'ok' ? new Set(Array.from({ length: d.rest.hours }, (_, i) => (d.rest.start + i) % 24)) : new Set();
+  html += '<div></div>' + Array.from({ length: 24 }, (_, h) => rest.has(h)
+    ? `<div class="text-[0.5625rem] text-center font-mono rounded-t bg-indigo-500/25 text-indigo-200" title="tahmini uyku">${String(h).padStart(2, '0')}</div>`
+    : `<div class="text-[0.5625rem] text-slate-500 text-center font-mono">${String(h).padStart(2, '0')}</div>`).join('') + '<div></div>';
   d.grid.forEach((row, w) => {
     const rowTot = d.byDow[w][k];
     html += `<div class="text-[0.625rem] text-slate-400 flex items-center">${days[w]}</div>`
@@ -1735,9 +1738,23 @@ function renderHours() {
   const fmtD = t => new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   document.getElementById('hours-summary').innerHTML =
     `Hacmin <b class="text-amber-200">%${Math.round(d.coreShare * 100)}</b>'i şu saatlerde: <b class="text-white font-mono">${escapeHtml(d.core.join(', '))}</b>`
-    + (d.quiet.length ? ` · neredeyse hiç işlem yok: <span class="font-mono text-slate-400">${escapeHtml(d.quiet.join(', '))}</span>` : '');
+    + (d.quiet.length ? ` · neredeyse hiç işlem yok: <span class="font-mono text-slate-400">${escapeHtml(d.quiet.join(', '))}</span>` : '')
+    + restLine(d.rest);
   document.getElementById('hours-note').textContent =
     `${d.orders} işlem (${d.fills} dolum), ${d.activeDays} gün · ${fmtD(d.from)} → ${fmtD(d.to)}. `
     + 'Hyperliquid yalnız son ~10.000 dolumu veriyor; site bundan sonra her cüzdanın dolumlarını kendisi saklıyor, harita her gün daha uzun geçmişe dayanacak. İşlem = aynı coin ve yönde 2 dk içindeki dolumlar.';
 }
 document.querySelectorAll('[data-hours-metric]').forEach(b => b.addEventListener('click', () => { hoursMetric = b.dataset.hoursMetric; renderHours(); }));
+
+// 😴 estimated rest window line (server: fillarchive.restWindow)
+function restLine(r) {
+  if (!r) return '';
+  const box = inner => `<div class="mt-2 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-400/30 text-indigo-100">${inner}</div>`;
+  if (r.status === 'az') return box('😴 Tahmini uyku: <span class="text-slate-400">bilinmiyor — en az 2 tam günlük kayıt gerekiyor</span>');
+  if (r.status === 'yok') return box(`😴 Tahmini uyku: <span class="text-slate-400">bulunamadı, ${escapeHtml(r.note || '')}</span>`);
+  const confCls = r.confidence === 'yüksek' ? 'text-emerald-300' : r.confidence === 'orta' ? 'text-amber-200' : 'text-rose-300';
+  return box(`😴 Tahmini uyku: <b class="font-mono text-white">${escapeHtml(r.label)} TSİ</b> (${r.hours} sa · New York ${escapeHtml(r.ny)})`
+    + ` · olası bölge: <b>${escapeHtml(r.zone)}</b>`
+    + ` · güven: <b class="${confCls}">${escapeHtml(r.confidence)}</b> <span class="text-slate-400">(${r.days} gün; ${r.windowDays} gecenin ${r.emptyDays}'inde bu aralık tamamen boş)</span>`
+    + '<div class="text-[0.625rem] text-slate-400 mt-1">Hesap: işlemlerin ve hacmin en çok %3\'ünün düştüğü en uzun kesintisiz saat aralığı; ortası yerel saatle ~03:00 sayılarak bölge tahmin edilir. Otomatik emirler ve başka cüzdanlar uykudayken de işlem yapabilir.</div>');
+}

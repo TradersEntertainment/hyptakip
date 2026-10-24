@@ -75,6 +75,11 @@ göre; üstte "hacmin %80'i şu saatlerde" özeti ve neredeyse hiç işlem olmay
 (`ARCHIVE_MIN`, saklama `ARCHIVE_KEEP_DAYS`=180); harita gün geçtikçe daha uzun geçmişe dayanır. İşlem = aynı coin ve
 yönde 2 dk içindeki dolumlar.
 
+**😴 Tahmini uyku:** işlemlerin ve hacmin en çok %3'ünün düştüğü en uzun kesintisiz saat aralığı (4–16 sa, TSİ);
+aralığın ortası yerel saatle ~03:00 sayılıp olası bölge (±1 sa içindeki saat dilimleri) yazılır, New York karşılığı
+da verilir. Güven: gün sayısı ve aralığın tamamen boş geçtiği gecelerin payı (≥14 gün ve %80 → yüksek, ≥7 gün ve %60
+→ orta, yoksa düşük). Günün her saatinde işlem varsa "bulunamadı (otomatik işlem olabilir)" yazar.
+
 ### 🐋 Ethereum cüzdanları (ör. Arthur Hayes)
 
 Hyperliquid dışındaki büyük cüzdanlar için: sol sütundaki **Ethereum Cüzdanları** paneline adres, ad, Chat ID ve
