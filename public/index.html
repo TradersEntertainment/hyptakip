@@ -608,6 +608,13 @@
             <span class="block text-[0.625rem] text-slate-500">Çekim (Arbitrum'a), başka adrese / alt hesaba gönderim, vault'a yatırma. Kendi içinde perp↔spot aktarım bildirilmez.</span>
           </span>
         </label>
+        <label class="flex items-start gap-3 p-3 rounded-xl bg-[#06080e] border border-amber-500/30 cursor-pointer hover:border-amber-400 transition">
+          <input type="checkbox" id="input-edit-call" class="mt-0.5 w-4 h-4 accent-amber-400 cursor-pointer">
+          <span class="space-y-0.5">
+            <span class="block text-xs font-semibold text-amber-200">📞 Telegram'dan ara</span>
+            <span class="block text-[0.625rem] text-slate-500">Bu cüzdanın her bildiriminde seni Telegram'dan arar ve bildirimi sesli okur. Yakın bildirimler tek aramada; aramadan sonra 5 dk bu cüzdan için tekrar aramaz. Aranacak hesap: Ayarlar → Aranacak Telegram.</span>
+          </span>
+        </label>
         <p id="edit-live-warn" class="hidden text-[0.6875rem] text-amber-300">⚠️ Bu cüzdan canlı akışa giremiyor: Hyperliquid aynı anda en çok 10 cüzdanı canlı izletiyor. Emir / spot / transfer bildirimi gelmez; başka bir cüzdanda bu kutucukları kapatınca açılır.</p>
         <div class="flex gap-2">
           <button type="button" data-close-edit class="flex-1 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 text-sm font-bold transition cursor-pointer">Vazgeç</button>
@@ -783,6 +790,16 @@
             <option value="10">10 Saniyede bir</option>
             <option value="30">30 Saniyede bir</option>
           </select>
+        </div>
+
+        <!-- 📞 Telegram call -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-semibold text-slate-300">📞 Aranacak Telegram</label>
+          <div class="flex gap-2">
+            <input id="settings-call-user" type="text" autocomplete="off" placeholder="@kullaniciadi" data-no-i18n class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-[#06080e] border border-white/10 text-white text-xs focus:outline-none focus:border-amber-400">
+            <button type="button" id="btn-test-call" class="px-3 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs font-bold transition cursor-pointer">Deneme araması</button>
+          </div>
+          <p class="text-[0.625rem] text-slate-500">"📞 Telegram'dan ara" açık balinalar işlem yapınca bu hesabı arar. Bir kez Telegram'da <b>@CallMeBot_txtbot</b>'a /start yaz (ücretsiz arama izni). <span id="settings-call-status"></span></p>
         </div>
 
         <!-- Test Telegram Button -->

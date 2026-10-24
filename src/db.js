@@ -58,6 +58,10 @@ function initDb() {
   if (!cols.includes('track_transfers')) {
     database.exec('ALTER TABLE wallets ADD COLUMN track_transfers INTEGER DEFAULT 1');
   }
+  // 📞 Telegram call on this wallet's alerts (user 24.10): off by default
+  if (!cols.includes('call_alert')) {
+    database.exec('ALTER TABLE wallets ADD COLUMN call_alert INTEGER DEFAULT 0');
+  }
 
   // Default settings
   const defaultSettings = [

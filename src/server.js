@@ -9,6 +9,7 @@ const telegram = require('./telegram');
 const tracker = require('./tracker');
 const pnldata = require('./pnldata');
 const botcmd = require('./botcmd');
+const caller = require('./caller');
 
 const app = express();
 
@@ -94,7 +95,7 @@ app.post('/api/wallets', async (req, res) => {
 app.put('/api/wallets/:address', (req, res) => {
   try {
     const { address } = req.params;
-    const { label, telegram_chat_id, threshold_pct, is_active, track_orders, track_spot, track_transfers } = req.body;
+    const { label, telegram_chat_id, threshold_pct, is_active, track_orders, track_spot, track_transfers, call_alert } = req.body;
 
     const fields = {};
     if (label !== undefined) fields.label = label.trim();
@@ -104,6 +105,7 @@ app.put('/api/wallets/:address', (req, res) => {
     if (track_orders !== undefined) fields.track_orders = track_orders ? 1 : 0;
     if (track_spot !== undefined) fields.track_spot = track_spot ? 1 : 0;
     if (track_transfers !== undefined) fields.track_transfers = track_transfers ? 1 : 0;
+    if (call_alert !== undefined) fields.call_alert = call_alert ? 1 : 0;
     if (fields.track_orders && ordersFull(address)) {
       return res.status(400).json({ success: false, error: `Emir bildirimi en çok ${orderstream.MAX_USERS} cüzdanda açılabilir (Hyperliquid sınırı).` });
     }
@@ -151,6 +153,13 @@ app.get('/api/wallets/:address/coin-pnl', async (req, res) => {
   } catch (err) {
     res.status(502).json({ success: false, error: err.message });
   }
+});
+
+// 📞 Telegram call (CallMeBot) status + test call
+app.get('/api/caller/status', (req, res) => res.json({ success: true, ...caller.status() }));
+app.post('/api/caller/test', async (req, res) => {
+  const r = await caller.callNow('HYPTAKIP deneme araması. Balina hareket edince böyle arayacağım.');
+  res.status(r.ok ? 200 : 400).json({ success: r.ok, note: r.note, error: r.ok ? undefined : r.note });
 });
 
 // 🤖 /pnl Telegram command status
@@ -249,6 +258,8 @@ app.get('/api/settings', (req, res) => {
         botTokenPreview: maskedToken,
         telegram_default_chat_id: defaultChatId,
         poll_interval_seconds: settings.poll_interval_seconds || '5',
+        call_telegram_user: settings.call_telegram_user || '',
+        call_env_user: (process.env.CALL_TELEGRAM_USER || process.env.WAKE_TELEGRAM_USER || '').trim(),
         source: 'railway_env'
       }
     });
@@ -260,9 +271,15 @@ app.get('/api/settings', (req, res) => {
 // Update settings (Only non-sensitive preferences like poll interval)
 app.post('/api/settings', (req, res) => {
   try {
-    const { poll_interval_seconds } = req.body;
+    const { poll_interval_seconds, call_telegram_user } = req.body;
     const toUpdate = {};
     if (poll_interval_seconds) toUpdate.poll_interval_seconds = String(poll_interval_seconds);
+    // 📞 who gets the call: a Telegram @username or +phone (not a secret; stored in the database, not in the repo)
+    if (call_telegram_user !== undefined) {
+      const u = String(call_telegram_user || '').trim();
+      if (u && !/^(@?[A-Za-z0-9_]{4,32}|\+\d{8,15})$/.test(u)) return res.status(400).json({ success: false, error: 'Aranacak Telegram: @kullanıcıadı ya da +90… telefon' });
+      toUpdate.call_telegram_user = u;
+    }
 
     const updated = db.updateSettings(toUpdate);
     const rawToken = process.env.TELEGRAM_BOT_TOKEN ? process.env.TELEGRAM_BOT_TOKEN.trim() : '';

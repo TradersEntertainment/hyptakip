@@ -1,5 +1,6 @@
 const db = require('./db');
 const config = require('./config');
+const caller = require('./caller');
 
 /**
  * Format currency with proper commas and decimals
@@ -265,6 +266,7 @@ ${title}
   });
 
   // Send to Telegram
+  caller.ring(wallet, head);   // 📞 the wallet's "Ara" box
   const result = await sendTelegramMessage(body, targetChatId);
   return result;
 }
@@ -352,6 +354,7 @@ async function notifyOrderAlert({ wallet, order }) {
     wallet_address: wallet.address, wallet_label: wallet.label, coin, alert_type: 'NEW_ORDER', message: body,
     details: { order }
   });
+  caller.ring(wallet, head);   // 📞 the wallet's "Ara" box
   return await sendTelegramMessage(body, wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID);
 }
 
@@ -386,6 +389,7 @@ async function notifySpotAlert({ wallet, fills }) {
   `.trim();
   db.addAlert({ wallet_address: wallet.address, wallet_label: wallet.label, coin, alert_type: 'SPOT_TRADE',
                 message: body, details: { n: fills.length, usd, avg } });
+  caller.ring(wallet, head);   // 📞 the wallet's "Ara" box
   return await sendTelegramMessage(body, wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID);
 }
 
@@ -410,6 +414,7 @@ ${t.to ? `📍 <b>Hedef:</b> <a href="https://hypurrscan.io/address/${t.to}"><co
   `.trim();
   db.addAlert({ wallet_address: wallet.address, wallet_label: wallet.label, coin: t.token, alert_type: 'TRANSFER_OUT',
                 message: body, details: { transfer: t, hash } });
+  caller.ring(wallet, head);   // 📞 the wallet's "Ara" box
   return await sendTelegramMessage(body, wallet.telegram_chat_id || process.env.TELEGRAM_DEFAULT_CHAT_ID || config.DEFAULT_MAIN_CHAT_ID);
 }
 

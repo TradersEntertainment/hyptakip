@@ -67,6 +67,15 @@ Bot token ve varsayılan bildirim kanalı **web sitesinden değil, doğrudan Rai
    - `TELEGRAM_DEFAULT_CHAT_ID`: Grubunuzun veya sohbetinizin ID'si
 7. Sitedeki **"Ayarlar"** penceresini açıp **"Railway Telegram Bağlantısını Test Et"** butonuna basarak entegrasyonu anında doğrulayabilirsiniz!
 
+### 📞 Balina işlem yapınca Telegram'dan arama
+
+Balinayı Düzenle penceresinde **"📞 Telegram'dan ara"** kutusu açık olan cüzdanların her bildiriminde (pozisyon,
+emir, spot, transfer) bot seni Telegram'dan arar ve bildirimin ilk satırını sesli okur. Telegram botları arama
+yapamadığı için ücretsiz **CallMeBot** kullanılır: bir kez Telegram'da `@CallMeBot_txtbot`'a `/start` yaz.
+Aranacak hesap **Ayarlar → Aranacak Telegram** (`@kullaniciadi` ya da `+90…`; boşsa env `CALL_TELEGRAM_USER` /
+`WAKE_TELEGRAM_USER`), "Deneme araması" ile denenir. Aynı cüzdanın 20 sn içindeki bildirimleri tek aramada birleşir
+(`CALL_MERGE_SEC`); aramadan sonra o cüzdan 5 dk aranmaz (`CALL_COOLDOWN_SEC`), mesajlar yine gelir.
+
 ### 📊 `/pnl` — detaylı K/Z raporu (Telegram)
 
 Gruba `/pnl` yazınca bot, cüzdanın detaylı kâr/zarar raporunu **5 görsellik bir albüm** olarak yollar:

@@ -484,6 +484,7 @@ function renderWalletsList() {
             <span data-no-i18n>${w.label}</span>
           </div>
           <div class="flex items-center gap-1.5">
+            ${Number(w.call_alert) === 1 ? '<span class="text-[0.625rem] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-semibold" title="Telegram araması açık">📞</span>' : ''}
             ${Number(w.track_orders) === 1 ? '<span class="text-[0.625rem] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-semibold" title="Emir bildirimi açık">📝</span>' : ''}
             <span class="text-[0.625rem] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 font-mono font-semibold">
               %${w.threshold_pct || 10}
@@ -1338,6 +1339,11 @@ async function loadSettings() {
     if (pollSelect && appSettings.poll_interval_seconds) {
       pollSelect.value = appSettings.poll_interval_seconds;
     }
+    const callInput = document.getElementById('settings-call-user');
+    if (callInput) {
+      callInput.value = appSettings.call_telegram_user || '';
+      callInput.placeholder = appSettings.call_env_user ? `${appSettings.call_env_user} (Railway)` : '@kullaniciadi';
+    }
   } catch (err) {
     console.error('loadSettings error:', err);
   }
@@ -1353,7 +1359,7 @@ document.getElementById('form-settings')?.addEventListener('submit', async (e) =
     const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ poll_interval_seconds: poll })
+      body: JSON.stringify({ poll_interval_seconds: poll, call_telegram_user: document.getElementById('settings-call-user')?.value.trim() ?? undefined })
     });
     const data = await res.json();
     if (data.success) {
@@ -1480,6 +1486,7 @@ document.getElementById('btn-edit-selected-whale')?.addEventListener('click', ()
   document.getElementById('input-edit-track-orders').checked = Number(selectedWallet.track_orders) === 1;
   document.getElementById('input-edit-track-spot').checked = Number(selectedWallet.track_spot ?? 1) === 1;
   document.getElementById('input-edit-track-transfers').checked = Number(selectedWallet.track_transfers ?? 1) === 1;
+  document.getElementById('input-edit-call').checked = Number(selectedWallet.call_alert) === 1;
   const anyLive = ['track_orders', 'track_spot', 'track_transfers'].some(k => Number(selectedWallet[k] ?? (k === 'track_orders' ? 0 : 1)) === 1);
   document.getElementById('edit-live-warn')?.classList.toggle('hidden', !(anyLive && selectedWallet.live === false));
   editModal.classList.remove('hidden');
@@ -1507,7 +1514,8 @@ document.getElementById('form-edit-wallet')?.addEventListener('submit', async (e
         telegram_chat_id: document.getElementById('input-edit-chatid').value.trim() || null,
         track_orders: document.getElementById('input-edit-track-orders').checked,
         track_spot: document.getElementById('input-edit-track-spot').checked,
-        track_transfers: document.getElementById('input-edit-track-transfers').checked
+        track_transfers: document.getElementById('input-edit-track-transfers').checked,
+        call_alert: document.getElementById('input-edit-call').checked
       })
     });
     const data = await res.json();
@@ -1652,4 +1660,22 @@ window.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('hyp:lang', () => {
   try { renderPnlHistory(); } catch (e) { /* not loaded yet */ }
   try { if (selectedWallet && selectedWallet.state) renderCharts(selectedWallet.state.positions || []); } catch (e) { /* ignore */ }
+});
+
+// 📞 Test call (CallMeBot): saves the username first so the test uses what is in the box
+document.getElementById('btn-test-call')?.addEventListener('click', async () => {
+  const u = document.getElementById('settings-call-user').value.trim();
+  const st = document.getElementById('settings-call-status');
+  try {
+    const save = await (await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_telegram_user: u }) })).json();
+    if (!save.success) throw new Error(save.error);
+    if (st) st.textContent = '⏳ aranıyor…';
+    const r = await (await fetch('/api/caller/test', { method: 'POST' })).json();
+    if (st) st.textContent = r.success ? '✅ arama başlatıldı, telefonuna bak' : '❌ ' + (r.error || 'başlamadı');
+    showToast(r.success ? 'Deneme araması başlatıldı 📞' : 'Arama başlamadı: ' + (r.error || ''), r.success ? 'success' : 'error');
+  } catch (err) {
+    if (st) st.textContent = '❌ ' + err.message;
+    showToast('Hata: ' + err.message, 'error');
+  }
 });
