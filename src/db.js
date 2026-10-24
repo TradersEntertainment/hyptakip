@@ -37,6 +37,18 @@ function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- 🐋 Ethereum wallets watched by src/evmwatch.js (e.g. Arthur Hayes)
+    CREATE TABLE IF NOT EXISTS evm_wallets (
+      address TEXT PRIMARY KEY,
+      label TEXT,
+      telegram_chat_id TEXT,
+      min_usd REAL DEFAULT 100000,
+      call_alert INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
+      last_ts TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -183,6 +195,26 @@ function deleteWallet(address) {
   return database.prepare('DELETE FROM wallets WHERE LOWER(address) = LOWER(?)').run(address.toLowerCase());
 }
 
+function getEvmWallets() {
+  return getDb().prepare('SELECT * FROM evm_wallets ORDER BY created_at ASC').all();
+}
+function upsertEvmWallet({ address, label, telegram_chat_id = null, min_usd = 100000, call_alert = 0 }) {
+  const a = String(address).trim().toLowerCase();
+  getDb().prepare(`
+    INSERT INTO evm_wallets (address, label, telegram_chat_id, min_usd, call_alert) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(address) DO UPDATE SET label = excluded.label, telegram_chat_id = excluded.telegram_chat_id,
+      min_usd = excluded.min_usd, call_alert = excluded.call_alert
+  `).run(a, (label || '').trim() || `${a.slice(0, 6)}…${a.slice(-4)}`, telegram_chat_id ? String(telegram_chat_id).trim() : null,
+         Math.max(0, Number(min_usd) || 0), call_alert ? 1 : 0);
+  return getDb().prepare('SELECT * FROM evm_wallets WHERE address = ?').get(a);
+}
+function setEvmLastTs(address, ts) {
+  getDb().prepare('UPDATE evm_wallets SET last_ts = ? WHERE address = ?').run(ts, String(address).toLowerCase());
+}
+function deleteEvmWallet(address) {
+  return getDb().prepare('DELETE FROM evm_wallets WHERE address = ?').run(String(address).toLowerCase());
+}
+
 function addAlert({ wallet_address, wallet_label, coin, alert_type, message, details }) {
   const database = getDb();
   const detailsStr = details ? (typeof details === 'string' ? details : JSON.stringify(details)) : null;
@@ -274,5 +306,9 @@ module.exports = {
   clearAlerts,
   getSettings,
   setSetting,
-  updateSettings
+  updateSettings,
+  getEvmWallets,
+  upsertEvmWallet,
+  setEvmLastTs,
+  deleteEvmWallet
 };

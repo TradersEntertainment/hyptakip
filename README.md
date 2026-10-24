@@ -67,6 +67,16 @@ Bot token ve varsayılan bildirim kanalı **web sitesinden değil, doğrudan Rai
    - `TELEGRAM_DEFAULT_CHAT_ID`: Grubunuzun veya sohbetinizin ID'si
 7. Sitedeki **"Ayarlar"** penceresini açıp **"Railway Telegram Bağlantısını Test Et"** butonuna basarak entegrasyonu anında doğrulayabilirsiniz!
 
+### 🐋 Ethereum cüzdanları (ör. Arthur Hayes)
+
+Hyperliquid dışındaki büyük cüzdanlar için: sol sütundaki **Ethereum Cüzdanları** paneline adres, ad, Chat ID ve
+dolar eşiği (varsayılan $100K) girilir. Ethereum ana ağındaki token ve ETH transferleri 20 sn'de bir Blockscout'un
+ücretsiz API'sinden okunur (anahtar gerekmez, `EVM_POLL_SEC`); bir turda eşiği geçen gönderim / alım Telegram'a gelir.
+İlk satır: "🐋 📤 Arthur Hayes $6.72M gönderdi: 14M ENA, 323K UNI, 1.89M ETHFI → Binance Deposit". Karşı taraf
+Blockscout etiketinden (Wintermute, Binance Deposit…), bilinmiyorsa adres. Taklit token / sıfır değerli "adres
+zehirleme" transferleri elenir (yalnız fiyatı bilinen, ASCII isimli, değeri > 0 tokenler). Kör nokta, açıkça: yalnız
+Ethereum ana ağı; karşı taraf etiketsizse kimin olduğu bilinmez, bu yüzden metin "gönderdi" der, "sattı" demez.
+
 ### 📞 Balina işlem yapınca Telegram'dan arama
 
 Balinayı Düzenle penceresinde **"📞 Telegram'dan ara"** kutusu açık olan cüzdanların her bildiriminde (pozisyon,

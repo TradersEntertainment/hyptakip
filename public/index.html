@@ -192,6 +192,34 @@
 
       </div>
 
+      <!-- 🐋 Ethereum wallets (src/evmwatch.js) -->
+      <div class="ultra-glass rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="hexagon" class="w-4 h-4 text-indigo-300"></i>
+            <h2 class="font-bold text-sm tracking-wide text-white">Ethereum Cüzdanları</h2>
+          </div>
+          <span id="evm-status" class="text-[0.625rem] font-mono text-slate-500"></span>
+        </div>
+        <div id="evm-list" class="space-y-2 text-xs"></div>
+        <details class="group">
+          <summary class="cursor-pointer list-none w-full py-2 px-3 rounded-xl border border-dashed border-indigo-400/30 hover:border-indigo-300 bg-indigo-500/5 text-indigo-200 text-xs font-bold flex items-center justify-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i><span>Ethereum cüzdanı ekle</span>
+          </summary>
+          <form id="form-evm" class="mt-3 space-y-2">
+            <input id="evm-address" required placeholder="0x… Ethereum adresi" class="w-full px-3 py-2 rounded-lg bg-[#06080e] border border-white/10 text-white text-xs font-mono focus:outline-none focus:border-indigo-400">
+            <input id="evm-label" placeholder="Ad (ör. Arthur Hayes)" data-no-i18n class="w-full px-3 py-2 rounded-lg bg-[#06080e] border border-white/10 text-white text-xs focus:outline-none focus:border-indigo-400">
+            <div class="flex gap-2">
+              <input id="evm-chat" placeholder="Chat ID (boş = genel)" class="flex-1 min-w-0 px-3 py-2 rounded-lg bg-[#06080e] border border-white/10 text-white text-xs font-mono focus:outline-none focus:border-indigo-400">
+              <input id="evm-min" type="number" min="0" step="1000" placeholder="Eşik $ (100000)" class="w-32 px-3 py-2 rounded-lg bg-[#06080e] border border-white/10 text-white text-xs font-mono focus:outline-none focus:border-indigo-400">
+            </div>
+            <label class="flex items-center gap-2 text-[0.6875rem] text-slate-300"><input id="evm-call" type="checkbox" class="accent-amber-400"> 📞 Telegram'dan ara</label>
+            <button type="submit" class="w-full py-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-100 text-xs font-bold">Kaydet</button>
+            <p class="text-[0.625rem] text-slate-500">Ethereum ana ağındaki token ve ETH transferleri 20 sn'de bir kontrol edilir; eşiği geçen gönderim / alımlar Telegram'a gelir. Sahte (taklit) token transferleri elenir.</p>
+          </form>
+        </details>
+      </div>
+
       <!-- Quick Tips Box matching user's screenshot -->
       <div class="info-box-screenshot text-xs space-y-1.5">
         <div class="flex items-center gap-2 font-bold text-purple-400">
@@ -993,6 +1021,7 @@
   <script src="i18n.js"></script>
   <script src="app.js"></script>
   <script src="whalecard.js"></script>
+  <script src="evm.js"></script>
   <script>
     lucide.createIcons();
   </script>

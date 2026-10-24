@@ -10,6 +10,7 @@ const tracker = require('./tracker');
 const pnldata = require('./pnldata');
 const botcmd = require('./botcmd');
 const caller = require('./caller');
+const evmwatch = require('./evmwatch');
 
 const app = express();
 
@@ -160,6 +161,21 @@ app.get('/api/caller/status', (req, res) => res.json({ success: true, ...caller.
 app.post('/api/caller/test', async (req, res) => {
   const r = await caller.callNow('HYPTAKIP deneme araması. Balina hareket edince böyle arayacağım.');
   res.status(r.ok ? 200 : 400).json({ success: r.ok, note: r.note, error: r.ok ? undefined : r.note });
+});
+
+// 🐋 Ethereum wallets (evmwatch.js)
+app.get('/api/evm-wallets', (req, res) => res.json({ success: true, wallets: db.getEvmWallets(), status: evmwatch.status() }));
+app.post('/api/evm-wallets', (req, res) => {
+  try {
+    const { address, label, telegram_chat_id, min_usd, call_alert } = req.body || {};
+    if (!/^0x[0-9a-fA-F]{40}$/.test(String(address || '').trim())) return res.status(400).json({ success: false, error: 'Geçersiz Ethereum adresi' });
+    const w = db.upsertEvmWallet({ address, label, telegram_chat_id, min_usd: min_usd === undefined || min_usd === '' ? 100000 : min_usd, call_alert });
+    res.json({ success: true, wallet: w });
+  } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+app.delete('/api/evm-wallets/:address', (req, res) => {
+  try { db.deleteEvmWallet(req.params.address); res.json({ success: true }); }
+  catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
 // 🤖 /pnl Telegram command status
@@ -333,6 +349,7 @@ app.post('/api/tracker/trigger', async (req, res) => {
 db.initDb();
 tracker.startTracker();
 orderstream.start();
+evmwatch.start();
 
 const server = app.listen(config.PORT, () => {
   console.log(`=========================================`);
@@ -349,6 +366,7 @@ function shutdown() {
   tracker.stopTracker();
   orderstream.stop();
   botcmd.stop();
+  evmwatch.stop();
   server.close(() => {
     process.exit(0);
   });
