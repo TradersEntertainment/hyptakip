@@ -67,6 +67,14 @@ Bot token ve varsayılan bildirim kanalı **web sitesinden değil, doğrudan Rai
    - `TELEGRAM_DEFAULT_CHAT_ID`: Grubunuzun veya sohbetinizin ID'si
 7. Sitedeki **"Ayarlar"** penceresini açıp **"Railway Telegram Bağlantısını Test Et"** butonuna basarak entegrasyonu anında doğrulayabilirsiniz!
 
+### ⏰ İşlem saatleri haritası
+
+Balina sayfasında **İşlem Saatleri** paneli: haftanın günü × saat (TSİ) ısı haritası, hacme ya da işlem sayısına
+göre; üstte "hacmin %80'i şu saatlerde" özeti ve neredeyse hiç işlem olmayan saatler. Hyperliquid yalnız son
+~10.000 dolumu verdiği için site her takip edilen cüzdanın dolumlarını 5 dk'da bir kendi `fills` tablosuna kopyalar
+(`ARCHIVE_MIN`, saklama `ARCHIVE_KEEP_DAYS`=180); harita gün geçtikçe daha uzun geçmişe dayanır. İşlem = aynı coin ve
+yönde 2 dk içindeki dolumlar.
+
 ### 🐋 Ethereum cüzdanları (ör. Arthur Hayes)
 
 Hyperliquid dışındaki büyük cüzdanlar için: sol sütundaki **Ethereum Cüzdanları** paneline adres, ad, Chat ID ve

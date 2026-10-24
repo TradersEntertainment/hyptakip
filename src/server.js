@@ -11,6 +11,7 @@ const pnldata = require('./pnldata');
 const botcmd = require('./botcmd');
 const caller = require('./caller');
 const evmwatch = require('./evmwatch');
+const fillarchive = require('./fillarchive');
 
 const app = express();
 
@@ -161,6 +162,18 @@ app.get('/api/caller/status', (req, res) => res.json({ success: true, ...caller.
 app.post('/api/caller/test', async (req, res) => {
   const r = await caller.callNow('HYPTAKIP deneme araması. Balina hareket edince böyle arayacağım.');
   res.status(r.ok ? 200 : 400).json({ success: r.ok, note: r.note, error: r.ok ? undefined : r.note });
+});
+
+// ⏰ Trading-hours map (fillarchive.js). First call for a wallet copies what HL still has, so the map is never empty
+app.get('/api/wallets/:address/hours', async (req, res) => {
+  try {
+    const address = String(req.params.address || '').toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(address)) return res.status(400).json({ success: false, error: 'Geçersiz adres' });
+    const days = [0, 7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 0;
+    const has = db.getDb().prepare('SELECT 1 FROM fills WHERE address = ? LIMIT 1').get(address);
+    if (!has) await fillarchive.archiveWallet(address);
+    res.json({ success: true, ...fillarchive.hours(address, days), archive: fillarchive.status() });
+  } catch (err) { res.status(502).json({ success: false, error: err.message }); }
 });
 
 // 🐋 Ethereum wallets (evmwatch.js)
@@ -356,6 +369,7 @@ db.initDb();
 tracker.startTracker();
 orderstream.start();
 evmwatch.start();
+fillarchive.start();
 
 const server = app.listen(config.PORT, () => {
   console.log(`=========================================`);
@@ -373,6 +387,7 @@ function shutdown() {
   orderstream.stop();
   botcmd.stop();
   evmwatch.stop();
+  fillarchive.stop();
   server.close(() => {
     process.exit(0);
   });

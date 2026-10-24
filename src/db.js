@@ -37,6 +37,22 @@ function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- ⏰ Fill archive of tracked wallets (src/fillarchive.js): HL only serves the last ~10k fills, so the trading-hours
+    -- map keeps its own copy and grows a longer history over time
+    CREATE TABLE IF NOT EXISTS fills (
+      address TEXT NOT NULL,
+      tid INTEGER NOT NULL,
+      time INTEGER NOT NULL,
+      coin TEXT,
+      dir TEXT,
+      px REAL,
+      sz REAL,
+      closed_pnl REAL,
+      fee REAL,
+      PRIMARY KEY (address, tid)
+    );
+    CREATE INDEX IF NOT EXISTS idx_fills_addr_time ON fills(address, time);
+
     -- 🐋 Ethereum wallets watched by src/evmwatch.js (e.g. Arthur Hayes)
     CREATE TABLE IF NOT EXISTS evm_wallets (
       address TEXT PRIMARY KEY,

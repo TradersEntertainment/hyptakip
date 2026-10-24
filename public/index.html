@@ -461,6 +461,20 @@
           </div>
         </div>
 
+        <!-- ⏰ Trading hours (fillarchive.js) -->
+        <div id="hours-panel" class="mt-4 bg-slate-950/80 p-4 rounded-2xl border border-white/5 relative z-10">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="clock" class="w-4 h-4 text-amber-300"></i><span>İşlem Saatleri</span> <span class="text-[0.625rem] font-mono text-slate-500">TSİ</span></h3>
+            <div class="flex gap-1.5 text-[0.6875rem] font-bold">
+              <button data-hours-metric="v" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">Hacim</button>
+              <button data-hours-metric="n" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">İşlem sayısı</button>
+            </div>
+          </div>
+          <div id="hours-summary" class="text-xs text-slate-300 mb-3"></div>
+          <div class="overflow-x-auto"><div id="hours-grid" class="min-w-[640px]"></div></div>
+          <p id="hours-note" class="text-[0.625rem] text-slate-500 mt-2"></p>
+        </div>
+
         <!-- LIQUIDATION DANGER RADAR (HyperData Terminal / Hypurrscan Inspired) -->
         <div id="liquidation-radar-panel" class="mt-4 pt-3.5 border-t border-white/5 relative z-10">
           <div class="flex items-center justify-between mb-2.5">

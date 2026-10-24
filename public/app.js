@@ -558,7 +558,7 @@ async function selectWallet(wallet, fetchFills = true) {
   } else if (currentTab === 'alerts') {
     loadAlerts();
   }
-  if (fetchFills) { loadPnlHistory(); loadCoinPnl(); }
+  if (fetchFills) { loadPnlHistory(); loadCoinPnl(); loadHours(); }
 }
 
 // 🐋 Whale card (whalecard.js) reads these
@@ -1679,3 +1679,65 @@ document.getElementById('btn-test-call')?.addEventListener('click', async () => 
     showToast('Hata: ' + err.message, 'error');
   }
 });
+
+// ⏰ Trading hours heatmap (server: /api/wallets/:address/hours, src/fillarchive.js)
+let hoursData = null, hoursMetric = 'v', hoursSeq = 0;
+async function loadHours() {
+  if (!selectedWallet) return;
+  const addr = selectedWallet.address.toLowerCase();
+  const seq = ++hoursSeq;
+  const grid = document.getElementById('hours-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="text-slate-500 text-xs py-4 text-center">Yükleniyor…</div>';
+  try {
+    const d = await (await fetch(`/api/wallets/${addr}/hours`)).json();
+    if (!d.success) throw new Error(d.error);
+    if (seq !== hoursSeq) return;
+    hoursData = d;
+    renderHours();
+  } catch (err) {
+    if (seq === hoursSeq) grid.innerHTML = `<div class="text-rose-400 text-xs">${escapeHtml(err.message)}</div>`;
+  }
+}
+function renderHours() {
+  const d = hoursData;
+  if (!d) return;
+  document.querySelectorAll('[data-hours-metric]').forEach(b => {
+    const on = b.dataset.hoursMetric === hoursMetric;
+    b.classList.toggle('bg-amber-500/15', on); b.classList.toggle('text-amber-200', on); b.classList.toggle('border-amber-400/40', on);
+  });
+  const grid = document.getElementById('hours-grid');
+  if (!d.orders) { grid.innerHTML = '<div class="text-slate-500 text-xs py-4 text-center">Henüz işlem kaydı yok.</div>'; document.getElementById('hours-summary').textContent = ''; return; }
+  const k = hoursMetric;
+  const max = Math.max(...d.grid.flat().map(c => c[k]), 1);
+  const tot = k === 'v' ? d.volume : d.orders;
+  const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+  const cell = (c, title) => {
+    const a = c[k] / max;
+    const bg = c[k] ? `rgba(251,191,36,${(0.12 + a * 0.88).toFixed(2)})` : 'rgba(255,255,255,0.03)';
+    return `<div title="${title}" class="h-6 rounded-[3px]" style="background:${bg}"></div>`;
+  };
+  const val = c => (k === 'v' ? fmtUsdShort(c.v) : `${c.n} işlem`);
+  let html = '<div class="grid gap-[3px]" style="grid-template-columns:2.6rem repeat(24,minmax(0,1fr)) 4.2rem">';
+  html += '<div></div>' + Array.from({ length: 24 }, (_, h) => `<div class="text-[0.5625rem] text-slate-500 text-center font-mono">${String(h).padStart(2, '0')}</div>`).join('') + '<div></div>';
+  d.grid.forEach((row, w) => {
+    const rowTot = d.byDow[w][k];
+    html += `<div class="text-[0.625rem] text-slate-400 flex items-center">${days[w]}</div>`
+      + row.map((c, h) => cell(c, `${days[w]} ${String(h).padStart(2, '0')}:00 · ${val(c)}`)).join('')
+      + `<div class="text-[0.625rem] font-mono text-slate-400 flex items-center justify-end">${tot ? Math.round(rowTot / tot * 100) : 0}%</div>`;
+  });
+  // hour totals row
+  const hmax = Math.max(...d.byHour.map(c => c[k]), 1);
+  html += '<div class="text-[0.625rem] text-slate-400 flex items-end">Toplam</div>' + d.byHour.map((c, h) =>
+    `<div class="flex items-end h-10" title="${String(h).padStart(2, '0')}:00 · ${val(c)} · %${tot ? (c[k] / tot * 100).toFixed(1) : 0}"><div class="w-full rounded-t bg-gradient-to-t from-amber-500 to-amber-300" style="height:${Math.max(c[k] ? 6 : 0, c[k] / hmax * 100)}%"></div></div>`).join('') + '<div></div>';
+  html += '</div>';
+  grid.innerHTML = html;
+  const fmtD = t => new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  document.getElementById('hours-summary').innerHTML =
+    `Hacmin <b class="text-amber-200">%${Math.round(d.coreShare * 100)}</b>'i şu saatlerde: <b class="text-white font-mono">${escapeHtml(d.core.join(', '))}</b>`
+    + (d.quiet.length ? ` · neredeyse hiç işlem yok: <span class="font-mono text-slate-400">${escapeHtml(d.quiet.join(', '))}</span>` : '');
+  document.getElementById('hours-note').textContent =
+    `${d.orders} işlem (${d.fills} dolum), ${d.activeDays} gün · ${fmtD(d.from)} → ${fmtD(d.to)}. `
+    + 'Hyperliquid yalnız son ~10.000 dolumu veriyor; site bundan sonra her cüzdanın dolumlarını kendisi saklıyor, harita her gün daha uzun geçmişe dayanacak. İşlem = aynı coin ve yönde 2 dk içindeki dolumlar.';
+}
+document.querySelectorAll('[data-hours-metric]').forEach(b => b.addEventListener('click', () => { hoursMetric = b.dataset.hoursMetric; renderHours(); }));
