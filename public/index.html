@@ -475,6 +475,28 @@
           <p id="hours-note" class="text-[0.625rem] text-slate-500 mt-2"></p>
         </div>
 
+        <!-- 🪙 Tickers the wallet trades (fillarchive.tickers) -->
+        <div id="tickers-panel" class="mt-4 bg-slate-950/80 p-4 rounded-2xl border border-white/5 relative z-10">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2"><i data-lucide="coins" class="w-4 h-4 text-cyan-300"></i><span>Trade Ettiği Tickerlar</span></h3>
+            <div class="flex gap-1.5 text-[0.6875rem] font-bold">
+              <button data-tick-days="7" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">7 Gün</button>
+              <button data-tick-days="30" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">30 Gün</button>
+              <button data-tick-days="0" class="px-2.5 py-1 rounded-lg border border-white/10 bg-slate-900 text-slate-300">Tümü</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-[0.6875rem] font-mono">
+              <thead class="text-slate-500"><tr class="border-b border-white/5">
+                <th class="text-left py-1.5 pr-2">Ticker</th><th class="text-right px-2">Hacim</th><th class="px-2 w-32">Pay</th>
+                <th class="text-right px-2">İşlem</th><th class="px-2 w-36">Alış / Satış</th><th class="text-right px-2">Net K/Z</th><th class="text-right pl-2">Son işlem</th>
+              </tr></thead>
+              <tbody id="tickers-body"></tbody>
+            </table>
+          </div>
+          <p id="tickers-note" class="text-[0.625rem] text-slate-500 mt-2"></p>
+        </div>
+
         <!-- LIQUIDATION DANGER RADAR (HyperData Terminal / Hypurrscan Inspired) -->
         <div id="liquidation-radar-panel" class="mt-4 pt-3.5 border-t border-white/5 relative z-10">
           <div class="flex items-center justify-between mb-2.5">

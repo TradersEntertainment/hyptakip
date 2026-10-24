@@ -67,6 +67,12 @@ Bot token ve varsayılan bildirim kanalı **web sitesinden değil, doğrudan Rai
    - `TELEGRAM_DEFAULT_CHAT_ID`: Grubunuzun veya sohbetinizin ID'si
 7. Sitedeki **"Ayarlar"** penceresini açıp **"Railway Telegram Bağlantısını Test Et"** butonuna basarak entegrasyonu anında doğrulayabilirsiniz!
 
+### 🪙 Trade ettiği tickerlar
+
+Balina sayfasında **Trade Ettiği Tickerlar** tablosu (7 gün / 30 gün / tümü): her coin için hacim ve payı, işlem
+sayısı, alış / satış oranı (alış = long açma / short kapatma), net K/Z (kapanışlardan gerçekleşen − ücret) ve son
+işlem zamanı. Veri dolum arşivinden (aşağıda); geçmiş gün geçtikçe uzar.
+
 ### ⏰ İşlem saatleri haritası
 
 Balina sayfasında **İşlem Saatleri** paneli: haftanın günü × saat (TSİ) ısı haritası, hacme ya da işlem sayısına

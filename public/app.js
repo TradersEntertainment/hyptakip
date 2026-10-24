@@ -558,7 +558,7 @@ async function selectWallet(wallet, fetchFills = true) {
   } else if (currentTab === 'alerts') {
     loadAlerts();
   }
-  if (fetchFills) { loadPnlHistory(); loadCoinPnl(); loadHours(); }
+  if (fetchFills) { loadPnlHistory(); loadCoinPnl(); loadHours(); loadTickers(); }
 }
 
 // 🐋 Whale card (whalecard.js) reads these
@@ -1758,3 +1758,40 @@ function restLine(r) {
     + ` · güven: <b class="${confCls}">${escapeHtml(r.confidence)}</b> <span class="text-slate-400">(${r.days} gün; ${r.windowDays} gecenin ${r.emptyDays}'inde bu aralık tamamen boş)</span>`
     + '<div class="text-[0.625rem] text-slate-400 mt-1">Hesap: işlemlerin ve hacmin en çok %3\'ünün düştüğü en uzun kesintisiz saat aralığı; ortası yerel saatle ~03:00 sayılarak bölge tahmin edilir. Otomatik emirler ve başka cüzdanlar uykudayken de işlem yapabilir.</div>');
 }
+
+// 🪙 Tickers the wallet trades (server: /api/wallets/:address/tickers)
+let tickDays = 0, tickSeq = 0;
+async function loadTickers() {
+  if (!selectedWallet) return;
+  const addr = selectedWallet.address.toLowerCase();
+  const seq = ++tickSeq;
+  const body = document.getElementById('tickers-body');
+  if (!body) return;
+  document.querySelectorAll('[data-tick-days]').forEach(b => {
+    const on = Number(b.dataset.tickDays) === tickDays;
+    b.classList.toggle('bg-cyan-500/15', on); b.classList.toggle('text-cyan-300', on); b.classList.toggle('border-cyan-500/40', on);
+  });
+  body.innerHTML = '<tr><td colspan="7" class="py-3 text-center text-slate-500">Yükleniyor…</td></tr>';
+  let d;
+  try { d = await (await fetch(`/api/wallets/${addr}/tickers?days=${tickDays}`)).json(); if (!d.success) throw new Error(d.error); }
+  catch (err) { if (seq === tickSeq) body.innerHTML = `<tr><td colspan="7" class="py-3 text-center text-rose-400">${escapeHtml(err.message)}</td></tr>`; return; }
+  if (seq !== tickSeq) return;
+  if (!d.coins.length) { body.innerHTML = '<tr><td colspan="7" class="py-3 text-center text-slate-500">Bu dönemde işlem yok.</td></tr>'; document.getElementById('tickers-note').textContent = ''; return; }
+  const money = v => (Math.abs(v) < 1 ? '<span class="text-slate-600">—</span>' : `<span class="${v > 0 ? 'text-emerald-400' : 'text-rose-400'}">${v > 0 ? '+' : ''}${fmtUsdShort(v)}</span>`);
+  const when = t => new Date(t).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  body.innerHTML = d.coins.map(c => {
+    const buy = c.volume ? c.buy / c.volume * 100 : 0;
+    return `<tr class="border-b border-white/5">
+      <td class="py-1.5 pr-2 text-white font-bold font-sans">${escapeHtml(c.name || c.coin)}</td>
+      <td class="text-right px-2 text-slate-200">${fmtUsdShort(c.volume)}</td>
+      <td class="px-2"><div class="h-1.5 rounded-full bg-white/5 overflow-hidden"><div class="h-1.5 bg-cyan-400" style="width:${Math.max(1, c.share * 100).toFixed(1)}%"></div></div><div class="text-[0.5625rem] text-slate-500">${(c.share * 100).toFixed(1)}%</div></td>
+      <td class="text-right px-2 text-slate-400">${c.orders}</td>
+      <td class="px-2"><div class="flex h-1.5 rounded-full overflow-hidden bg-rose-500/70"><div class="bg-emerald-500" style="width:${buy.toFixed(0)}%"></div></div><div class="text-[0.5625rem] text-slate-500">alış %${buy.toFixed(0)} · satış %${(100 - buy).toFixed(0)}</div></td>
+      <td class="text-right px-2">${money(c.net)}</td>
+      <td class="text-right pl-2 text-slate-400">${when(c.last)}</td></tr>`;
+  }).join('');
+  document.getElementById('tickers-note').textContent =
+    `${d.coins.length} ticker · toplam ${fmtUsdShort(d.total)} hacim · ${when(d.from)} → ${when(d.to)}. İşlem = aynı coin ve yönde 2 dk içindeki dolumlar. `
+    + 'Alış = long açma / short kapatma; satış = long kapatma / short açma. Net K/Z = kapanışlardan gerçekleşen − ücret (açık pozisyon dahil değil). Kayıtlar site arşivinden; geçmiş gün geçtikçe uzar.';
+}
+document.querySelectorAll('[data-tick-days]').forEach(b => b.addEventListener('click', () => { tickDays = Number(b.dataset.tickDays); loadTickers(); }));

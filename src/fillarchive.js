@@ -175,4 +175,27 @@ function restWindow(from, to, slots, byHour, vol) {
   };
 }
 
-module.exports = { start, stop, run, archiveWallet, hours, ranges, status: () => ({ ...status }) };
+// 🪙 Tickers a wallet trades (user 24.10: "trade ettiği tickerlar diye bir kısım koyar mısın her balina için"), from the
+// archive: per coin volume, orders (fills of one coin + direction within 2 min), buy / sell volume, realized − fee,
+// first / last trade. Buy = Open Long, Close Short, Buy (spot); sell = the rest.
+function tickers(address, days = 0) {
+  const a = address.toLowerCase();
+  const since = days ? Date.now() - days * 86_400_000 : 0;
+  const rows = db.getDb().prepare('SELECT time, coin, dir, px, sz, closed_pnl, fee FROM fills WHERE address = ? AND time >= ? ORDER BY time').all(a, since);
+  const by = new Map();
+  let total = 0, prev = null;
+  for (const r of rows) {
+    const v = r.px * r.sz;
+    total += v;
+    const c = by.get(r.coin) || { coin: r.coin, volume: 0, buy: 0, sell: 0, orders: 0, fills: 0, net: 0, first: r.time, last: r.time };
+    c.volume += v; c.fills++; c.net += (r.closed_pnl || 0) - (r.fee || 0); c.last = r.time;
+    if (/Open Long|Close Short|^Buy|^B$/i.test(r.dir || '')) c.buy += v; else c.sell += v;
+    if (!(prev && prev.coin === r.coin && prev.dir === r.dir && r.time - prev.time <= 120_000)) c.orders++;
+    prev = r;
+    by.set(r.coin, c);
+  }
+  const list = [...by.values()].sort((x, y) => y.volume - x.volume).map(c => ({ ...c, share: total ? c.volume / total : 0 }));
+  return { address: a, total, coins: list, from: rows.length ? rows[0].time : null, to: rows.length ? rows[rows.length - 1].time : null };
+}
+
+module.exports = { tickers, start, stop, run, archiveWallet, hours, ranges, status: () => ({ ...status }) };

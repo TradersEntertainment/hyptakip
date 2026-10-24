@@ -176,6 +176,19 @@ app.get('/api/wallets/:address/hours', async (req, res) => {
   } catch (err) { res.status(502).json({ success: false, error: err.message }); }
 });
 
+app.get('/api/wallets/:address/tickers', async (req, res) => {
+  try {
+    const address = String(req.params.address || '').toLowerCase();
+    if (!/^0x[0-9a-f]{40}$/.test(address)) return res.status(400).json({ success: false, error: 'Geçersiz adres' });
+    const days = [0, 1, 7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 0;
+    const has = db.getDb().prepare('SELECT 1 FROM fills WHERE address = ? LIMIT 1').get(address);
+    if (!has) await fillarchive.archiveWallet(address);
+    const out = fillarchive.tickers(address, days);
+    for (const c of out.coins) c.name = String(c.coin).startsWith('@') ? await telegram.spotName(c.coin) : c.coin;
+    res.json({ success: true, ...out });
+  } catch (err) { res.status(502).json({ success: false, error: err.message }); }
+});
+
 // 🐋 Ethereum wallets (evmwatch.js)
 app.get('/api/evm-wallets', (req, res) => res.json({ success: true, wallets: db.getEvmWallets(), status: evmwatch.status() }));
 app.post('/api/evm-wallets', (req, res) => {
